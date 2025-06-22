@@ -7,10 +7,9 @@ const ASSETS_TO_CACHE = [
   '/index.html',
   '/global.css',
   '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
+  '/favicon.png',
   // statikus assetek, bővíthető
-  // ha vannak további képek, fontok, stb., ide kell felvenni
+  // ha vannak további képek, fontok, stb.
 ];
 
 self.addEventListener('install', event => {
