@@ -6,7 +6,11 @@ interface PreviewCanvasProps {
   appState: AppState;
   onCanvasUpdate: (dataUrl: string) => void;
   onLayerPositionChange: (layerId: string, position: { x: number; y: number }) => void;
-  // TODO: Add onLayerSizeChange, onLayerRotateChange if direct manipulation on canvas is implemented
+  // ÚJ: Grid overlay propok
+  showGrid?: boolean;
+  gridDensity?: number;
+  gridStyle?: 'dotted' | 'solid';
+  gridOpacity?: number;
 }
 
 type DraggableElementInfo = {
@@ -47,7 +51,11 @@ const loadImage = (src: string): Promise<HTMLImageElement> => {
 const PreviewCanvas: React.FC<PreviewCanvasProps> = ({ 
     appState, 
     onCanvasUpdate,
-    onLayerPositionChange
+    onLayerPositionChange,
+    showGrid,
+    gridDensity,
+    gridStyle,
+    gridOpacity
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [draggingInfo, setDraggingInfo] = useState<DraggableElementInfo>(null);
@@ -55,7 +63,6 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
   const [loadedImages, setLoadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
   // ÚJ: háttérkép töltési állapot
   const [isBgImageLoading, setIsBgImageLoading] = useState(false);
-  const [isBgImageTainted, setIsBgImageTainted] = useState(false);
 
   // Detect Safari (iOS/macOS) for filter warning
   const [isSafari, setIsSafari] = useState(false);
@@ -411,11 +418,9 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
     const res = getCanvasAndContext();
     if (!res) return;
     const { canvas, ctx } = res;
-    
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.shadowColor = 'transparent'; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; ctx.shadowBlur = 0;
     ctx.letterSpacing = '0px'; ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-
     // --- FŐ JAVÍTÁS: ha háttérkép töltődik, CSAK a töltő szöveget rajzoljuk ki, mást nem! ---
     if (appState.backgroundType === 'image' && isBgImageLoading && appState.bgImage) {
         ctx.fillStyle = appState.bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -424,7 +429,6 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
         // NE hívjuk meg az onCanvasUpdate-et, amíg töltődik a kép!
         return;
     }
-
     if (appState.backgroundType === 'solid') {
         ctx.fillStyle = appState.bgColor;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -446,53 +450,32 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
         gradientFill.addColorStop(0, color1); gradientFill.addColorStop(1, color2);
         ctx.fillStyle = gradientFill; ctx.fillRect(0, 0, canvas.width, canvas.height);
     } 
-
     const bgImageFromState = appState.bgImage; 
     const bgImageElement = bgImageFromState ? loadedImages.get(bgImageFromState) : null;
-
     if (appState.backgroundType === 'image') {
         if (bgImageElement) {
             ctx.save();
-            // If tainted, skip filter and show warning
-            if (isBgImageTainted) {
-              ctx.drawImage(bgImageElement, 0, 0, canvas.width, canvas.height);
-              ctx.restore();
-              // Draw warning overlay
-              ctx.save();
-              ctx.globalAlpha = 0.7;
-              ctx.fillStyle = '#ff0000';
-              ctx.fillRect(0, 0, canvas.width, 40);
-              ctx.globalAlpha = 1;
-              ctx.font = 'bold 16px sans-serif';
-              ctx.fillStyle = '#fff';
-              ctx.textAlign = 'center';
-              ctx.fillText('A kép nem támogatja a filtereket (CORS hiba).', canvas.width/2, 26);
-              ctx.restore();
-            } else {
-              const blur = Number(appState.bgImageFilters.blur ?? 0);
-              const brightness = Number(appState.bgImageFilters.brightness ?? 100);
-              const contrast = Number(appState.bgImageFilters.contrast ?? 100);
-              ctx.filter = `blur(${blur}px) brightness(${brightness}%) contrast(${contrast}%)`;
-              ctx.drawImage(bgImageElement, 0, 0, canvas.width, canvas.height);
-              ctx.filter = 'none';
-              ctx.restore();
-            }
+            // Filterek alkalmazása
+            const blur = Number(appState.bgImageFilters.blur ?? 0);
+            const brightness = Number(appState.bgImageFilters.brightness ?? 100);
+            const contrast = Number(appState.bgImageFilters.contrast ?? 100);
+            ctx.filter = `blur(${blur}px) brightness(${brightness}%) contrast(${contrast}%)`;
+            ctx.drawImage(bgImageElement, 0, 0, canvas.width, canvas.height);
+            ctx.filter = 'none';
+            ctx.restore();
         } else if (appState.bgImage && !isBgImageLoading) {
             ctx.fillStyle = appState.bgColor;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
     }
-
     const overlayApplicable = appState.backgroundType === 'gradient' || (appState.backgroundType === 'image' && bgImageElement);
     if (overlayApplicable && appState.overlay.opacity > 0) {
         ctx.save();
         ctx.globalAlpha = appState.overlay.opacity; ctx.fillStyle = appState.overlay.color;
         ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.restore();
     }
-    
     const sortedLayers = [...appState.layers].sort((a, b) => a.zIndex - b.zIndex);
     sortedLayers.forEach(layer => drawLayer(ctx, layer));
-    
     // --- FŐ JAVÍTÁS: csak akkor hívjuk meg az onCanvasUpdate-et, ha NEM töltődik a háttérkép, ÉS tényleg változott a tartalom! ---
     if (!(appState.backgroundType === 'image' && isBgImageLoading && appState.bgImage)) {
       let previewFormat = 'image/png';
@@ -511,7 +494,7 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
         onCanvasUpdate(newDataUrl);
       }
     }
-  }, [appState, getCanvasAndContext, onCanvasUpdate, drawLayer, loadedImages, isBgImageLoading, isBgImageTainted, isSafari]);
+  }, [appState, getCanvasAndContext, onCanvasUpdate, drawLayer, loadedImages, isBgImageLoading, isSafari]);
   
   useEffect(() => {
     drawCanvas();
@@ -531,7 +514,6 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
 
   const getLayerBoundingBox = useCallback((ctx: CanvasRenderingContext2D, layer: Layer): { x: number, y: number, width: number, height: number } | null => {
     if (!layer.isVisible) return null;
-    
     if (layer.type === 'text') {
         const textLayer = layer as TextLayer;
         ctx.font = `${textLayer.fontWeight} ${textLayer.fontSize}px "${textLayer.fontFamily}", sans-serif`;
@@ -543,11 +525,9 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
         const textBlockWidth = Math.max(...lines.map(line => ctx.measureText(line).width));
         const textBlockHeight = (lines.length > 0 ? (lines.length -1) * (textLayer.fontSize * textLayer.lineHeightMultiplier) : 0) + textLayer.fontSize;
         ctx.letterSpacing = '0px';
-
         let boxX = textLayer.x; 
         if (textLayer.textAlign === 'center') boxX = textLayer.x - textBlockWidth / 2;
         else if (textLayer.textAlign === 'right') boxX = textLayer.x - textBlockWidth;
-        
         let boxY = textLayer.y;
         if (textLayer.verticalAlign === 'middle') {
             boxY = textLayer.y - textBlockHeight / 2;
@@ -555,26 +535,23 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
             boxY = textLayer.y - textBlockHeight;
         }
         return { x: boxX, y: boxY, width: textBlockWidth, height: textBlockHeight };
-
     } else if (layer.type === 'logo') {
-        const logoLayer = layer as LogoLayer;
-        const img = loadedImages.get(logoLayer.src!);
+        const logo = layer as LogoLayer;
+        const img = loadedImages.get(logo.src!);
         if (!img) return null;
         const aspectRatio = img.width / img.height;
-        const logoRenderHeight = logoLayer.size / aspectRatio;
-        
-        let boxX = logoLayer.x;
-        let boxY = logoLayer.y;
-
-        if (!logoLayer.isFreelyPositioned) {
-            switch(logoLayer.cornerPosition) {
+        const logoRenderHeight = logo.size / aspectRatio;
+        let boxX = logo.x;
+        let boxY = logo.y;
+        if (!logo.isFreelyPositioned) {
+            switch(logo.cornerPosition) {
                 case 'top-left': boxX = LOGO_CANVAS_PADDING; boxY = LOGO_CANVAS_PADDING; break;
-                case 'top-right': boxX = appState.canvasWidth - logoLayer.size - LOGO_CANVAS_PADDING; boxY = LOGO_CANVAS_PADDING; break;
+                case 'top-right': boxX = appState.canvasWidth - logo.size - LOGO_CANVAS_PADDING; boxY = LOGO_CANVAS_PADDING; break;
                 case 'bottom-left': boxX = LOGO_CANVAS_PADDING; boxY = appState.canvasHeight - logoRenderHeight - LOGO_CANVAS_PADDING; break;
-                case 'bottom-right': default: boxX = appState.canvasWidth - logoLayer.size - LOGO_CANVAS_PADDING; boxY = appState.canvasHeight - logoRenderHeight - LOGO_CANVAS_PADDING; break;
+                case 'bottom-right': default: boxX = appState.canvasWidth - logo.size - LOGO_CANVAS_PADDING; boxY = appState.canvasHeight - logoRenderHeight - LOGO_CANVAS_PADDING; break;
             }
         }
-        return { x: boxX, y: boxY, width: logoLayer.size, height: logoRenderHeight };
+        return { x: boxX, y: boxY, width: logo.size, height: logoRenderHeight };
     } else if (layer.type === 'image') {
         const imgLayer = layer as ImageLayer;
         return { x: imgLayer.x, y: imgLayer.y, width: imgLayer.width, height: imgLayer.height };
@@ -687,8 +664,71 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
     Number(appState.bgImageFilters.contrast) !== 100
   );
 
+  // --- Grid overlay SVG generálása ---
+  const renderGridOverlay = () => {
+    if (!showGrid) return null;
+    // Default values if undefined
+    const cols = gridDensity ?? 5;
+    const rows = gridDensity ?? 5;
+    const w = appState.canvasWidth;
+    const h = appState.canvasHeight;
+    const lines: React.JSX.Element[] = [];
+    const stroke = gridStyle === 'dotted' ? '#FF3B30' : '#FF3B30';
+    const dash = gridStyle === 'dotted' ? '2,8' : undefined;
+    // Függőleges vonalak
+    for (let i = 1; i < cols; i++) {
+      const x = (w / cols) * i;
+      lines.push(
+        <line
+          key={`v-${i}`}
+          x1={x}
+          y1={0}
+          x2={x}
+          y2={h}
+          stroke={stroke}
+          strokeWidth={1.5}
+          strokeDasharray={dash}
+          opacity={gridOpacity ?? 0.5}
+        />
+      );
+    }
+    // Vízszintes vonalak
+    for (let i = 1; i < rows; i++) {
+      const y = (h / rows) * i;
+      lines.push(
+        <line
+          key={`h-${i}`}
+          x1={0}
+          y1={y}
+          x2={w}
+          y2={y}
+          stroke={stroke}
+          strokeWidth={1.5}
+          strokeDasharray={dash}
+          opacity={gridOpacity ?? 0.5}
+        />
+      );
+    }
+    return (
+      <svg
+        width="100%"
+        height="100%"
+        viewBox={`0 0 ${w} ${h}`}
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          pointerEvents: 'none',
+          zIndex: 10,
+        }}
+      >
+        {lines}
+      </svg>
+    );
+  };
+
   return (
-    <div style={{position: 'relative'}}>
+    <div className="relative w-full max-w-4xl" style={{}}>
       <style>{`
         .safari-filter-warning-anim {
           animation: safariFadeIn 0.7s cubic-bezier(0.4,0,0.2,1);
@@ -710,15 +750,21 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
           A háttérkép filterek (blur, brightness, contrast) nem támogatottak Safariban.
         </div>
       )}
-      <canvas
-        ref={canvasRef}
-        width={appState.canvasWidth}
-        height={appState.canvasHeight}
-        className="shadow-2xl w-full max-w-4xl rounded-lg bg-white" 
-        id="previewCanvas"
-        onMouseDown={handleMouseDown}
-        style={{ cursor: cursorStyle, touchAction: 'none' }} 
-      />
+      <div className="relative w-full max-w-4xl overflow-hidden rounded-lg" style={{}}>
+        <canvas
+          ref={canvasRef}
+          width={appState.canvasWidth}
+          height={appState.canvasHeight}
+          className="shadow-2xl w-full max-w-4xl rounded-lg bg-white block"
+          id="previewCanvas"
+          onMouseDown={handleMouseDown}
+          style={{ cursor: cursorStyle, touchAction: 'none', display: 'block' }}
+        />
+        {/* Grid overlay csak szerkesztő módban, exportnál nem! */}
+        <div className="pointer-events-none absolute inset-0 z-10 w-full h-full overflow-hidden rounded-lg">
+          {renderGridOverlay()}
+        </div>
+      </div>
     </div>
   );
 };

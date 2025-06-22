@@ -4,7 +4,10 @@ import ControlPanelSection from './ControlPanelSection'; // Visszaállítva
 import IconButton from './IconButton';
 import FileUploadInput from './FileUploadInput'; 
 import { EyeIcon, EyeSlashIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, PlusIcon, TextIcon, ImageIcon, LogoIcon } from './icons/SimpleIcons';
+import GridIcon from './icons/GridIcon';
 import { BRAND_RED } from '../constants';
+import RangeInput from './RangeInput';
+import SelectInput from './SelectInput';
 
 interface LayersPanelProps {
   layers: Layer[];
@@ -14,7 +17,16 @@ interface LayersPanelProps {
   onDeleteLayer: (id: string) => void;
   onMoveLayer: (id: string, direction: 'up' | 'down') => void;
   onAddLayer: (type: LayerType, file?: File) => void;
-  onReorderLayers?: (fromIndex: number, toIndex: number) => void; // ÚJ
+  onReorderLayers?: (fromIndex: number, toIndex: number) => void;
+  // Grid overlay vezérlők (App-ből jönnek)
+  showGrid: boolean;
+  setShowGrid: (v: boolean) => void;
+  gridDensity: number;
+  setGridDensity: (v: number) => void;
+  gridStyle: 'dotted' | 'solid';
+  setGridStyle: (v: 'dotted' | 'solid') => void;
+  gridOpacity: number;
+  setGridOpacity: (v: number) => void;
 }
 
 const LayerTypeIcon: React.FC<{type: LayerType}> = ({type}) => {
@@ -33,6 +45,15 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
   onMoveLayer,
   onAddLayer,
   onReorderLayers,
+  // Grid overlay propok
+  showGrid,
+  setShowGrid,
+  gridDensity,
+  setGridDensity,
+  gridStyle,
+  setGridStyle,
+  gridOpacity,
+  setGridOpacity,
 }) => {
   const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -74,8 +95,85 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
     }
   };
 
+  // Grid overlay UI state (csak a beállítás-panel láthatósága marad lokális)
+  const [showGridSettings, setShowGridSettings] = useState(false);
+
   return (
     <ControlPanelSection title="Rétegek" isOpenDefault={true}>
+      {/* Grid overlay toggle button középen, lebegő beállításokkal */}
+      <div className="flex justify-center mb-4 relative">
+        <button
+          type="button"
+          aria-pressed={showGrid}
+          title={showGrid ? 'Grid kikapcsolása' : 'Grid bekapcsolása'}
+          className={`group flex items-center gap-2 px-4 py-2 rounded-full border shadow-sm font-semibold transition-all duration-150
+            ${showGrid ? 'bg-[#ffeaea] border-[#FF3B30] text-[#FF3B30]' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-100 hover:border-gray-400'}
+            focus:outline-none focus:ring-2 focus:ring-[#FF3B30] focus:ring-offset-2`}
+          onClick={() => { setShowGrid(!showGrid); if (!showGrid) setShowGridSettings(true); }}
+        >
+          <GridIcon className="w-5 h-5" />
+          <span className="text-sm select-none">Grid</span>
+          <span className="sr-only">{showGrid ? 'Kikapcsol' : 'Bekapcsol'}</span>
+        </button>
+        {/* Lebegő beállítás-panel, csak ha aktív a grid */}
+        {showGrid && showGridSettings && (
+          <div className="absolute left-1/2 top-full z-10 mt-2 -translate-x-1/2 w-64 bg-white border border-gray-200 rounded-xl shadow-lg p-4 flex flex-col gap-3 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-gray-700 text-sm">Grid beállítások</span>
+              <button
+                className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1 rounded focus:outline-none"
+                onClick={() => setShowGridSettings(false)}
+                title="Beállítások elrejtése"
+              >
+                ✕
+              </button>
+            </div>
+            <RangeInput
+              id="gridDensity"
+              label="Sűrűség"
+              min={2}
+              max={12}
+              step={1}
+              value={gridDensity}
+              onChange={setGridDensity}
+              valueDisplay={`${gridDensity}x${gridDensity}`}
+            />
+            <div className="flex flex-col gap-2">
+              <label htmlFor="gridStyle" className="block text-sm font-medium text-gray-700">Vonal stílus</label>
+              <SelectInput
+                id="gridStyle"
+                label=""
+                value={gridStyle}
+                options={[
+                  { value: 'dotted', name: 'Pontozott' },
+                  { value: 'solid', name: 'Folytonos' }
+                ]}
+                onChange={val => setGridStyle(val as 'dotted' | 'solid')}
+              />
+            </div>
+            <RangeInput
+              id="gridOpacity"
+              label="Áttetszőség"
+              min={0.1}
+              max={1}
+              step={0.05}
+              value={gridOpacity}
+              onChange={setGridOpacity}
+              valueDisplay={`${Math.round(gridOpacity * 100)}%`}
+            />
+          </div>
+        )}
+        {/* Beállítások gomb csak ha grid aktív, de panel nem látszik */}
+        {showGrid && !showGridSettings && (
+          <button
+            className="absolute right-0 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-700 px-2 py-1 rounded focus:outline-none"
+            onClick={() => setShowGridSettings(true)}
+            title="Grid beállítások megnyitása"
+          >
+            ⚙️
+          </button>
+        )}
+      </div>
       <div
         ref={panelRef}
         onDragOver={handlePanelDragOver}

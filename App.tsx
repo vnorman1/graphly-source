@@ -56,6 +56,11 @@ const App: React.FC = () => {
         }
     });
     const [isLoading, setIsLoading] = useState<boolean>(true);
+    // Grid overlay state (globális, hogy PreviewCanvas is lássa)
+    const [showGrid, setShowGrid] = useState(false);
+    const [gridDensity, setGridDensity] = useState(5);
+    const [gridStyle, setGridStyle] = useState<'dotted' | 'solid'>('dotted');
+    const [gridOpacity, setGridOpacity] = useState(0.5);
 
     const mergeStateWithInitial = (loadedStatePartial: Partial<AppState>): AppState => {
         const defaultTextLayerFromConstants = INITIAL_STATE.layers.find(l => l.type === 'text') as TextLayer | undefined;
@@ -708,6 +713,15 @@ const App: React.FC = () => {
                             onMoveLayer={moveLayer}
                             onAddLayer={addLayer}
                             onReorderLayers={handleReorderLayers}
+                            // Grid overlay props
+                            showGrid={showGrid}
+                            setShowGrid={setShowGrid}
+                            gridDensity={gridDensity}
+                            setGridDensity={setGridDensity}
+                            gridStyle={gridStyle}
+                            setGridStyle={setGridStyle}
+                            gridOpacity={gridOpacity}
+                            setGridOpacity={setGridOpacity}
                         />
                         
                         {selectedLayer && ( 
@@ -894,6 +908,11 @@ const App: React.FC = () => {
                     appState={appState} 
                     onCanvasUpdate={handleCanvasUpdate}
                     onLayerPositionChange={handleLayerPositionChange}
+                    // Grid overlay props
+                    showGrid={!isPreviewVisible && showGrid}
+                    gridDensity={gridDensity}
+                    gridStyle={gridStyle}
+                    gridOpacity={gridOpacity}
                 />
                 <button
                     onClick={() => setIsPreviewVisible(!isPreviewVisible)}
