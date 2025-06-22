@@ -9,6 +9,7 @@ import {
     EXPORT_FORMAT_OPTIONS
 } from './constants';
 
+
 import ControlPanelSection from './components/ControlPanelSection';
 import InputLabel from './components/InputLabel';
 import ColorPickerInput from './components/ColorPickerInput';
@@ -24,7 +25,7 @@ import CheckboxInput from './components/CheckboxInput';
 import SegmentedControl from './components/SegmentedControl';
 import LayersPanel from './components/LayersPanel'; // New
 import LayerSpecificSettings from './components/LayerSpecificSettings'; // New
-
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 
 // import LayoutTextLeftIcon from './components/icons/LayoutTextLeftIcon';
 // import LayoutTextCenterIcon from './components/icons/LayoutTextCenterIcon';
@@ -601,8 +602,8 @@ const App: React.FC = () => {
             {!isPreviewVisible && (
                 <div className="col-span-1 bg-white p-6 sm:p-8 border-r border-gray-200 overflow-y-auto max-h-screen">
                     <header className="mb-6">
-                        <h1 className="text-3xl font-black uppercase tracking-tighter text-gray-900">OG Kép Szerkesztő</h1>
-                        <p className="text-gray-700">Svájci Stílusú Vizuális Generátor</p>
+                        <h1 className="text-3xl font-black uppercase tracking-tighter text-gray-900">Graphly</h1>
+                        <p className="text-gray-700">Open Graph (OG) és Twitter Card-hoz tervezve.</p>
                     </header>
 
                     <div className="mb-6">
@@ -797,6 +798,10 @@ const App: React.FC = () => {
                                 <button onClick={() => handleExport({w: 1200, h: 600}, 'twitter-share')} className="w-full bg-gray-700 text-white font-bold py-3 rounded-md hover:bg-gray-800 transition-colors">Twitter (2:1)</button>
                                 <button onClick={() => handleExport({w: 1200, h: 628}, 'facebook-share')} className="w-full bg-gray-700 text-white font-bold py-3 rounded-md hover:bg-gray-800 transition-colors">Facebook (1.91:1)</button>
                              </div>
+                            <div className="text-center text-sm text-gray-500 mt-8">
+                              Készítette: <span className="font-semibold text-black"> [V.N.] </span> &copy; {new Date().getFullYear()}
+                            </div>
+                            <PWAInstallPrompt />
                          </div>
                     </div>
                 </div>

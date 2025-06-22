@@ -22,7 +22,7 @@ const defaultTextLayer: TextLayer = {
     x: CANVAS_PADDING,
     y: CANVAS_PADDING,
     rotation: 0,
-    content: "A svájci stílus a rendről és a tisztaságról szól",
+    content: "[V.N.]™",
     fontFamily: 'Inter',
     fontWeight: '900',
     fontSize: 90,

@@ -1,49 +1,13 @@
-
 <!DOCTYPE html>
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fejlett Svájci Stílusú OG Image Szerkesztő</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Graphly :: [V.N.]</title>
+    <!-- script src="https://cdn.tailwindcss.com"></script -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&family=Montserrat:wght@300;400;700;900&family=Roboto:wght@300;400;700;900&family=Open+Sans:wght@300;400;700&family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
-    <style>
-      /* Custom scrollbar for better aesthetics, if allowed (Tailwind doesn't directly control this well) */
-      /* For Webkit browsers */
-      ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #f1f1f1; /* gray-100 / gray-200 */
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #c7c7c7; /* gray-400 */
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #a3a3a3; /* gray-500 */
-      }
-
-      /* Ensure details summary doesn't have default marker if we use our own icon */
-      .control-panel summary::-webkit-details-marker {
-        display: none;
-      }
-      .control-panel summary {
-        list-style: none; /* For Firefox */
-      }
-
-      /* Styling for select options */
-      select option {
-        color: #1f2937; /* Tailwind gray-800 for better readability */
-        background-color: white; /* Ensure white background */
-      }
-      select:focus option { /* May affect focused select's option background in some browsers */
-        background-color: white;
-      }
-    </style>
 <script type="importmap">
 {
   "imports": {
@@ -53,7 +17,27 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
+<link rel="stylesheet" href="/global.css">
+    <meta name="description" content="Fejlett Svájci Stílusú OG Image Szerkesztő – gyors, modern, letisztult OG képgenerálás weben.">
+    <meta name="keywords" content="OG image, Open Graph, képgenerátor, svájci stílus, webapp, social media, preview, szerkesztő, vnorman1">
+    <meta name="author" content="vnorman1">
+    <meta name="theme-color" content="#ffb3a7">
+    <meta name="color-scheme" content="light dark">
+    <meta name="application-name" content="OG Image Szerkesztő">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Fejlett Svájci Stílusú OG Image Szerkesztő">
+    <meta property="og:description" content="Készítsd el saját OG képedet svájci stílusban, egyszerűen és gyorsan!">
+    <meta property="og:url" content="https://og-generator.vnorman.hu/">
+    <meta property="og:image" content="https://og-generator.vnorman.hu/og-preview.png">
+    <meta property="og:site_name" content="OG Image Szerkesztő">
+    <meta property="og:locale" content="hu_HU">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Fejlett Svájci Stílusú OG Image Szerkesztő">
+    <meta name="twitter:description" content="Készítsd el saját OG képedet svájci stílusban, egyszerűen és gyorsan!">
+    <meta name="twitter:image" content="https://og-generator.vnorman.hu/og-preview.png">
+    <meta name="twitter:creator" content="@vnorman1">
+    <link rel="manifest" href="/manifest.json">
 </head>
 <body class="bg-gray-100">
     <div id="root"></div>
