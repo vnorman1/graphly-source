@@ -8,6 +8,7 @@ import {
     FONT_OPTIONS, FONT_WEIGHT_OPTIONS, TEXT_ALIGN_OPTIONS, VERTICAL_ALIGN_OPTIONS, BRAND_RED, generateId,
     EXPORT_FORMAT_OPTIONS
 } from './constants';
+import { OG_TEMPLATES } from './templates';
 
 
 import ControlPanelSection from './components/ControlPanelSection';
@@ -26,6 +27,7 @@ import SegmentedControl from './components/SegmentedControl';
 import LayersPanel from './components/LayersPanel'; // New
 import LayerSpecificSettings from './components/LayerSpecificSettings'; // New
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import Preloader from './components/Preloader';
 
 // import LayoutTextLeftIcon from './components/icons/LayoutTextLeftIcon';
 // import LayoutTextCenterIcon from './components/icons/LayoutTextCenterIcon';
@@ -40,11 +42,20 @@ type SegmentedControlOption<T extends string> = AppSegmentedControlOption<T>;
 const App: React.FC = () => {
     const [appState, setAppState] = useState<AppState>(INITIAL_STATE);
     const [brandKit, setBrandKit] = useState<BrandKitState>(INITIAL_BRAND_KIT);
-    const [templates, setTemplates] = useState<Template[]>([]);
-    const [templateName, setTemplateName] = useState<string>('');
-    const [selectedTemplateName, setSelectedTemplateName] = useState<string>(''); // For the dropdown
+    const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>('');
     const [socialPreviewImageUrl, setSocialPreviewImageUrl] = useState<string | null>(null);
     const [isPreviewVisible, setIsPreviewVisible] = useState<boolean>(false);
+    const [templateName, setTemplateName] = useState<string>('');
+    const [selectedTemplateName, setSelectedTemplateName] = useState<string>('');
+    const [templates, setTemplates] = useState<Template[]>(() => {
+        try {
+            const saved = localStorage.getItem('ogEditorTemplates');
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
+    const [isLoading, setIsLoading] = useState<boolean>(true);
 
     const mergeStateWithInitial = (loadedStatePartial: Partial<AppState>): AppState => {
         const defaultTextLayerFromConstants = INITIAL_STATE.layers.find(l => l.type === 'text') as TextLayer | undefined;
@@ -152,16 +163,7 @@ const App: React.FC = () => {
             }
         }
 
-        const savedTemplates = localStorage.getItem('ogEditorTemplates');
-        if (savedTemplates) {
-            try {
-                setTemplates(JSON.parse(savedTemplates));
-            } catch (error) {
-                console.error("Failed to parse saved templates, resetting to empty:", error);
-                setTemplates([]);
-            }
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -601,6 +603,60 @@ const App: React.FC = () => {
         }
     }, []);
 
+    // Template application handler
+    const handleApplyTemplate = (templateKey: string) => {
+        const template = OG_TEMPLATES.find(t => t.key === templateKey);
+        if (template) {
+            setAppState(mergeStateWithInitial(template.state));
+            setSelectedTemplateKey(templateKey);
+        }
+    };
+
+    // Drag & drop rétegsorrend handler
+    const handleReorderLayers = (fromIndex: number, toIndex: number) => {
+        setAppState(prev => {
+            const sorted = [...prev.layers].sort((a, b) => b.zIndex - a.zIndex);
+            if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return prev;
+            const moved = sorted.splice(fromIndex, 1)[0];
+            sorted.splice(toIndex, 0, moved);
+            // Új zIndex kiosztás (legfelső: legnagyobb)
+            const maxZ = sorted.length > 0 ? Math.max(...sorted.map(l => l.zIndex)) : 0;
+            const newLayers = sorted.map((l, i) => ({ ...l, zIndex: maxZ - i }));
+            return { ...prev, layers: newLayers };
+        });
+    };
+
+    useEffect(() => {
+        // Preloader: minimum 0.5s, de csak addig, amíg minden betölt
+        const minTime = 1000;
+        const start = Date.now();
+        let ready = false;
+        let timeoutId: NodeJS.Timeout;
+
+        // Simulált app init (pl. adatok, fontok, képek betöltése)
+        const finishLoading = () => {
+            const elapsed = Date.now() - start;
+            if (elapsed < minTime) {
+                timeoutId = setTimeout(() => setIsLoading(false), minTime - elapsed);
+            } else {
+                setIsLoading(false);
+            }
+        };
+
+        // Itt lehetne pl. Promise.all([...]) ha van aszinkron betöltés
+        // Most csak szimuláció (1s), de ha gyorsabb, akkor is min. 0.5s
+        setTimeout(() => {
+            ready = true;
+            finishLoading();
+        },); // vagy cseréld le a tényleges betöltésre
+
+        return () => clearTimeout(timeoutId);
+    }, []);
+
+    if (isLoading) {
+        return <Preloader />;
+    }
+
     return (
         <div className={`min-h-screen font-['Inter'] ${isPreviewVisible ? '' : 'grid grid-cols-1 lg:grid-cols-3'}`}>
             {/* Left Control Panel - Conditional Rendering */}
@@ -640,14 +696,7 @@ const App: React.FC = () => {
                                     valueDisplay={`${Math.round(appState.jpegQuality * 100)}%`}
                                 />
                             )}
-                            {appState.exportFormat === 'png' && (
-                                <CheckboxInput 
-                                    id="includeTransparency" 
-                                    label="Átlátszóság megőrzése (PNG)" 
-                                    checked={appState.includeTransparency} 
-                                    onChange={val => handleStateChange('includeTransparency', val)} 
-                                />
-                            )}
+                            
                         </ControlPanelSection>
 
                         <LayersPanel
@@ -658,6 +707,7 @@ const App: React.FC = () => {
                             onDeleteLayer={deleteLayer}
                             onMoveLayer={moveLayer}
                             onAddLayer={addLayer}
+                            onReorderLayers={handleReorderLayers}
                         />
                         
                         {selectedLayer && ( 
@@ -775,18 +825,38 @@ const App: React.FC = () => {
                                      <p className="text-xs text-gray-500 mt-1">A rétegekre vonatkozó márkaszíneket a kiválasztott réteg beállításainál találod.</p>
                                 </div>
                             </div>
-                             <div>
+                            <div>
                                 <h3 className="font-bold text-lg text-gray-900 mt-4">Sablonok</h3>
-                                 <div className="mt-2 space-y-2">
-                                    <div className="flex gap-2">
+                                <div className="mt-2 space-y-2">
+                                    {/* Gyári sablonok (OG_TEMPLATES) */}
+                                    <select
+                                        value={selectedTemplateKey}
+                                        onChange={e => {
+                                            setSelectedTemplateKey(e.target.value);
+                                            handleApplyTemplate(e.target.value);
+                                        }}
+                                        className="input-field w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF3B30] focus:border-[#FF3B30] bg-white"
+                                    >
+                                        <option value="">Gyári sablon kiválasztása...</option>
+                                        {OG_TEMPLATES.map(t => (
+                                            <option key={t.key} value={t.key}>{t.name}</option>
+                                        ))}
+                                    </select>
+                                    {selectedTemplateKey && (
+                                        <div className="text-xs text-gray-600 italic mt-1">
+                                            {OG_TEMPLATES.find(t => t.key === selectedTemplateKey)?.description}
+                                        </div>
+                                    )}
+                                    {/* Egyéni sablonok (mentés/betöltés) */}
+                                    <div className="flex gap-2 mt-4">
                                         <input type="text" value={templateName} onChange={e => setTemplateName(e.target.value)} className="input-field w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF3B30] focus:border-[#FF3B30]" placeholder="Sablon neve..."/>
                                         <button onClick={handleSaveTemplate} className={`px-4 bg-gray-800 text-white rounded font-bold hover:bg-black transition-colors ${!templateName.trim() ? 'opacity-50 cursor-not-allowed' : ''}`} title="Aktuális állapot mentése sablonként" disabled={!templateName.trim()}>Ment</button>
                                     </div>
-                                    {templates.length > 0 && (
-                                      <select value={selectedTemplateName} onChange={e => handleLoadTemplate(e.target.value)} className="input-field w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF3B30] focus:border-[#FF3B30] bg-white">
-                                          <option value="">Sablon betöltése...</option>
-                                          {templates.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
-                                      </select>
+                                    {templates && templates.length > 0 && (
+                                        <select value={selectedTemplateName} onChange={e => handleLoadTemplate(e.target.value)} className="input-field w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#FF3B30] focus:border-[#FF3B30] bg-white mt-2">
+                                            <option value="">Egyéni sablon betöltése...</option>
+                                            {templates.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
+                                        </select>
                                     )}
                                 </div>
                             </div>

@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Layer, LayerType } from '../types';
 import ControlPanelSection from './ControlPanelSection'; // Visszaállítva
 import IconButton from './IconButton';
 import FileUploadInput from './FileUploadInput'; 
 import { EyeIcon, EyeSlashIcon, TrashIcon, ArrowUpIcon, ArrowDownIcon, PlusIcon, TextIcon, ImageIcon, LogoIcon } from './icons/SimpleIcons';
+import { BRAND_RED } from '../constants';
 
 interface LayersPanelProps {
   layers: Layer[];
@@ -13,6 +14,7 @@ interface LayersPanelProps {
   onDeleteLayer: (id: string) => void;
   onMoveLayer: (id: string, direction: 'up' | 'down') => void;
   onAddLayer: (type: LayerType, file?: File) => void;
+  onReorderLayers?: (fromIndex: number, toIndex: number) => void; // ÚJ
 }
 
 const LayerTypeIcon: React.FC<{type: LayerType}> = ({type}) => {
@@ -30,7 +32,9 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
   onDeleteLayer,
   onMoveLayer,
   onAddLayer,
+  onReorderLayers,
 }) => {
+  const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
   const sortedLayers = [...layers].sort((a, b) => b.zIndex - a.zIndex); // Display top-most layer first
 
   const handleImageFileChange = (file: File) => {
@@ -52,9 +56,29 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
         {sortedLayers.map((layer, index) => (
           <div
             key={layer.id}
+            draggable
+            onDragStart={e => {
+              setDraggedLayerId(layer.id);
+              e.dataTransfer.effectAllowed = 'move';
+            }}
+            onDragOver={e => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'move';
+            }}
+            onDrop={e => {
+              e.preventDefault();
+              if (draggedLayerId && draggedLayerId !== layer.id && onReorderLayers) {
+                const fromIndex = sortedLayers.findIndex(l => l.id === draggedLayerId);
+                const toIndex = index;
+                onReorderLayers(fromIndex, toIndex);
+              }
+              setDraggedLayerId(null);
+            }}
+            onDragEnd={() => setDraggedLayerId(null)}
             onClick={() => onSelectLayer(layer.id)}
             className={`flex items-center p-2.5 rounded-md cursor-pointer border-2 transition-colors duration-150
-              ${selectedLayerId === layer.id ? 'bg-indigo-100 border-indigo-400 shadow-sm' : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300'}
+              ${selectedLayerId === layer.id ? 'bg-[#ffeaea] border-[#FF3B30] shadow-sm' : 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300'}
+              ${draggedLayerId === layer.id ? 'opacity-60' : ''}
             `}
           >
             <LayerTypeIcon type={layer.type} />
