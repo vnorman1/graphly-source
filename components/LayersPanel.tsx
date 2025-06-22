@@ -97,6 +97,33 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
 
   // Grid overlay UI state (csak a beállítás-panel láthatósága marad lokális)
   const [showGridSettings, setShowGridSettings] = useState(false);
+  const [isGridSettingsFading, setIsGridSettingsFading] = useState(false);
+  const gridSettingsRef = useRef<HTMLDivElement>(null);
+
+  // Click-away handler for grid settings panel (with animation)
+  React.useEffect(() => {
+    if (!showGridSettings) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (gridSettingsRef.current && !gridSettingsRef.current.contains(event.target as Node)) {
+        setIsGridSettingsFading(true);
+        setTimeout(() => {
+          setShowGridSettings(false);
+          setIsGridSettingsFading(false);
+        }, 180); // match animation duration
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showGridSettings]);
+
+  // Fade-out animation for close button as well
+  const handleCloseGridSettings = () => {
+    setIsGridSettingsFading(true);
+    setTimeout(() => {
+      setShowGridSettings(false);
+      setIsGridSettingsFading(false);
+    }, 180);
+  };
 
   return (
     <ControlPanelSection title="Rétegek" isOpenDefault={true}>
@@ -117,12 +144,16 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
         </button>
         {/* Lebegő beállítás-panel, csak ha aktív a grid */}
         {showGrid && showGridSettings && (
-          <div className="absolute left-1/2 top-full z-10 mt-2 -translate-x-1/2 w-64 bg-white border border-gray-200 rounded-xl shadow-lg p-4 flex flex-col gap-3 animate-fade-in">
+          <div
+            ref={gridSettingsRef}
+            className={`absolute left-1/2 top-full z-10 mt-2 -translate-x-1/2 w-64 bg-white border border-gray-200 rounded-xl shadow-lg p-4 flex flex-col gap-3 animate-fade-in transition-opacity duration-200 ${isGridSettingsFading ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+            style={{ transition: 'opacity 180ms cubic-bezier(0.4,0,0.2,1)' }}
+          >
             <div className="flex items-center justify-between">
               <span className="font-semibold text-gray-700 text-sm">Grid beállítások</span>
               <button
                 className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1 rounded focus:outline-none"
-                onClick={() => setShowGridSettings(false)}
+                onClick={handleCloseGridSettings}
                 title="Beállítások elrejtése"
               >
                 ✕

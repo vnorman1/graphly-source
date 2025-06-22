@@ -41,6 +41,9 @@ type SegmentedControlOption<T extends string> = AppSegmentedControlOption<T>;
 
 const App: React.FC = () => {
     const [appState, setAppState] = useState<AppState>(INITIAL_STATE);
+    // Undo/redo history
+    const [history, setHistory] = useState<AppState[]>([]);
+    const [future, setFuture] = useState<AppState[]>([]);
     const [brandKit, setBrandKit] = useState<BrandKitState>(INITIAL_BRAND_KIT);
     const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>('');
     const [socialPreviewImageUrl, setSocialPreviewImageUrl] = useState<string | null>(null);
@@ -175,6 +178,33 @@ const App: React.FC = () => {
         localStorage.setItem('ogEditorState', JSON.stringify(appState));
     }, [appState]);
 
+    // Helper: push to history before state change
+    const pushHistory = (newState: AppState) => {
+        setHistory(prev => {
+            const updated = [...prev, appState];
+            return updated.length > 10 ? updated.slice(updated.length - 10) : updated;
+        });
+        setFuture([]); // clear redo stack
+        setAppState(newState);
+    };
+
+    // Undo/redo handlers
+    const handleUndo = () => {
+        if (history.length === 0) return;
+        const prevState = history[history.length - 1];
+        setHistory(h => h.slice(0, h.length - 1));
+        setFuture(f => [appState, ...f]);
+        setAppState(prevState);
+    };
+    const handleRedo = () => {
+        if (future.length === 0) return;
+        const nextState = future[0];
+        setFuture(f => f.slice(1));
+        setHistory(h => [...h, appState].slice(-10));
+        setAppState(nextState);
+    };
+
+    // Minden szerkesztő műveletnél pushHistory-t használunk:
     const updateLayer = useCallback((layerId: string, updates: Partial<Layer>) => {
         setAppState(prev => {
             const newLayers = prev.layers.map(l => {
@@ -188,10 +218,9 @@ const App: React.FC = () => {
                 }
                 return l;
             });
-            return {
-                ...prev,
-                layers: newLayers as Layer[] 
-            };
+            const newState = { ...prev, layers: newLayers as Layer[] };
+            pushHistory(newState);
+            return prev; // a pushHistory már beállítja
         });
     }, []);
     
@@ -237,6 +266,7 @@ const App: React.FC = () => {
         updateLayer(layerId, { x: position.x, y: position.y });
     };
 
+    // Add Layer (text/image)
     const addLayer = (type: LayerType, file?: File) => {
         const newLayerBaseProps: Omit<LayerBase, 'type' | 'name' | 'id'> = { 
             zIndex: appState.layers.length > 0 ? Math.max(...appState.layers.map(l => l.zIndex)) + 1 : 0,
@@ -247,9 +277,7 @@ const App: React.FC = () => {
             rotation: 0,
             isLocked: false,
         };
-
         const layerId = generateId(type);
-
         if (type === 'image' && file) {
             const reader = new FileReader();
             reader.onload = e => {
@@ -263,7 +291,6 @@ const App: React.FC = () => {
                         const shadowState: TextShadowState = defaultTextLayerForShadow?.textShadow 
                             ? { ...defaultTextLayerForShadow.textShadow } 
                             : { enabled: false, color: '#000000', offsetX: 2, offsetY: 2, blurRadius: 4 };
-                        
                         const imageLayerToAdd: ImageLayer = {
                             ...newLayerBaseProps,
                             id: layerId,
@@ -276,15 +303,13 @@ const App: React.FC = () => {
                             borderRadius: 0,
                             shadow: shadowState,
                         };
-                        setAppState((prevState: AppState): AppState => {
-                            const newLayers: Layer[] = [...prevState.layers, imageLayerToAdd];
-                            return { 
-                                ...prevState, 
-                                layers: newLayers, 
-                                selectedLayerId: imageLayerToAdd.id 
-                            };
-                        });
-                    }
+                        const newState: AppState = {
+                            ...appState,
+                            layers: [...appState.layers, imageLayerToAdd],
+                            selectedLayerId: imageLayerToAdd.id
+                        };
+                        pushHistory(newState);
+                    };
                     img.src = imgSrc;
                 }
             };
@@ -297,7 +322,6 @@ const App: React.FC = () => {
                 const layerContent = "Új szövegréteg";
                 const layerX = CANVAS_BASE_WIDTH / 10;
                 const layerY = CANVAS_BASE_HEIGHT / 10;
-
                 const textLayerToAdd: TextLayer = {
                     ...newLayerBaseProps,
                     id: layerId,
@@ -317,34 +341,34 @@ const App: React.FC = () => {
                     width: defaultTextLayerFromConstants.width,
                     textShadow: { ...defaultTextLayerFromConstants.textShadow },
                 };
-                 setAppState((prevState: AppState): AppState => {
-                    const newLayers: Layer[] = [...prevState.layers, textLayerToAdd];
-                     return { 
-                        ...prevState, 
-                        layers: newLayers, 
-                        selectedLayerId: textLayerToAdd.id 
-                    };
-                });
+                const newState: AppState = {
+                    ...appState,
+                    layers: [...appState.layers, textLayerToAdd],
+                    selectedLayerId: textLayerToAdd.id
+                };
+                pushHistory(newState);
             }
         }
     };
-    
+
+    // Delete Layer
     const deleteLayer = (layerId: string) => {
         const layerToDelete = appState.layers.find(l => l.id === layerId);
-        
         if (layerToDelete?.type === 'logo') {
             alert("A logó réteg nem törölhető. Elrejtheted vagy törölheted a képét.");
             return;
         }
-
-        setAppState(prev => {
-            const newLayers = prev.layers.filter(l => l.id !== layerId);
-            let newSelectedLayerId = prev.selectedLayerId;
-            if (prev.selectedLayerId === layerId) {
-                newSelectedLayerId = newLayers.length > 0 ? newLayers[newLayers.length - 1].id : null;
-            }
-            return { ...prev, layers: newLayers, selectedLayerId: newSelectedLayerId };
-        });
+        const newLayers = appState.layers.filter(l => l.id !== layerId);
+        let newSelectedLayerId = appState.selectedLayerId;
+        if (appState.selectedLayerId === layerId) {
+            newSelectedLayerId = newLayers.length > 0 ? newLayers[newLayers.length - 1].id : null;
+        }
+        const newState: AppState = {
+            ...appState,
+            layers: newLayers,
+            selectedLayerId: newSelectedLayerId
+        };
+        pushHistory(newState);
     };
 
     const selectLayer = (layerId: string) => {
@@ -358,73 +382,83 @@ const App: React.FC = () => {
         }
     };
 
+    // Move Layer
     const moveLayer = (layerId: string, direction: 'up' | 'down') => {
-        setAppState(prev => {
-            const layersCopy = [...prev.layers];
-            const layerIndex = layersCopy.findIndex(l => l.id === layerId);
-            if (layerIndex === -1) return prev;
-
-            const currentZ = layersCopy[layerIndex].zIndex;
-            if (direction === 'up') {
-                let swapWithIndex = -1;
-                let minHigherZ = Infinity;
-                for(let i=0; i < layersCopy.length; i++) {
-                    if(i === layerIndex) continue;
-                    if(layersCopy[i].zIndex > currentZ) {
-                        if(layersCopy[i].zIndex < minHigherZ) {
-                            minHigherZ = layersCopy[i].zIndex;
-                            swapWithIndex = i;
-                        }
-                    } else if (layersCopy[i].zIndex === currentZ) { 
-                         let nextZ = currentZ + 1;
-                         while(layersCopy.some(l => l.zIndex === nextZ)) nextZ++;
-                         minHigherZ = nextZ;
-                         layersCopy[layerIndex].zIndex = minHigherZ;
-                         return { ...prev, layers: layersCopy.sort((a,b) => a.zIndex - b.zIndex) };
+        const layersCopy = [...appState.layers];
+        const layerIndex = layersCopy.findIndex(l => l.id === layerId);
+        if (layerIndex === -1) return;
+        const currentZ = layersCopy[layerIndex].zIndex;
+        if (direction === 'up') {
+            let swapWithIndex = -1;
+            let minHigherZ = Infinity;
+            for(let i=0; i < layersCopy.length; i++) {
+                if(i === layerIndex) continue;
+                if(layersCopy[i].zIndex > currentZ) {
+                    if(layersCopy[i].zIndex < minHigherZ) {
+                        minHigherZ = layersCopy[i].zIndex;
+                        swapWithIndex = i;
                     }
-                }
-                if(swapWithIndex !== -1) {
+                } else if (layersCopy[i].zIndex === currentZ) { 
+                    let nextZ = currentZ + 1;
+                    while(layersCopy.some(l => l.zIndex === nextZ)) nextZ++;
+                    minHigherZ = nextZ;
                     layersCopy[layerIndex].zIndex = minHigherZ;
-                    layersCopy[swapWithIndex].zIndex = currentZ;
-                } else { 
-                     let maxZ = -1;
-                     layersCopy.forEach(l => { if (l.zIndex > maxZ) maxZ = l.zIndex });
-                     if (currentZ <= maxZ) layersCopy[layerIndex].zIndex = maxZ + 1;
-                }
-
-
-            } else { 
-                let swapWithIndex = -1;
-                let maxLowerZ = -Infinity;
-                 for(let i=0; i < layersCopy.length; i++) {
-                    if(i === layerIndex) continue;
-                    if(layersCopy[i].zIndex < currentZ) {
-                        if(layersCopy[i].zIndex > maxLowerZ) {
-                            maxLowerZ = layersCopy[i].zIndex;
-                            swapWithIndex = i;
-                        }
-                    }  else if (layersCopy[i].zIndex === currentZ) {
-                        let prevZ = currentZ -1;
-                        while(layersCopy.some(l => l.zIndex === prevZ) && prevZ > -Infinity) prevZ--;
-                        if (prevZ > -Infinity) { 
-                           maxLowerZ = prevZ;
-                           layersCopy[layerIndex].zIndex = maxLowerZ;
-                           return { ...prev, layers: layersCopy.sort((a,b) => a.zIndex - b.zIndex) };
-                        }
-                    }
-                }
-                 if(swapWithIndex !== -1) {
-                    layersCopy[layerIndex].zIndex = maxLowerZ;
-                    layersCopy[swapWithIndex].zIndex = currentZ;
-                } else { 
-                    let minZ = Infinity;
-                    layersCopy.forEach(l => { if (l.zIndex < minZ) minZ = l.zIndex });
-                    if (currentZ >= minZ && minZ > 0) layersCopy[layerIndex].zIndex = minZ -1;
-                    else if (currentZ >=minZ && minZ <=0 ) layersCopy[layerIndex].zIndex = minZ -1; 
+                    const newState: AppState = {
+                        ...appState,
+                        layers: layersCopy.sort((a,b) => a.zIndex - b.zIndex)
+                    };
+                    pushHistory(newState);
+                    return;
                 }
             }
-            return { ...prev, layers: layersCopy.sort((a,b) => a.zIndex - b.zIndex) };
-        });
+            if(swapWithIndex !== -1) {
+                layersCopy[layerIndex].zIndex = minHigherZ;
+                layersCopy[swapWithIndex].zIndex = currentZ;
+            } else { 
+                let maxZ = -1;
+                layersCopy.forEach(l => { if (l.zIndex > maxZ) maxZ = l.zIndex });
+                if (currentZ <= maxZ) layersCopy[layerIndex].zIndex = maxZ + 1;
+            }
+        } else { 
+            let swapWithIndex = -1;
+            let maxLowerZ = -Infinity;
+            for(let i=0; i < layersCopy.length; i++) {
+                if(i === layerIndex) continue;
+                if(layersCopy[i].zIndex < currentZ) {
+                    if(layersCopy[i].zIndex > maxLowerZ) {
+                        maxLowerZ = layersCopy[i].zIndex;
+                        swapWithIndex = i;
+                    }
+                }  else if (layersCopy[i].zIndex === currentZ) {
+                    let prevZ = currentZ -1;
+                    while(layersCopy.some(l => l.zIndex === prevZ) && prevZ > -Infinity) prevZ--;
+                    if (prevZ > -Infinity) { 
+                        maxLowerZ = prevZ;
+                        layersCopy[layerIndex].zIndex = maxLowerZ;
+                        const newState: AppState = {
+                            ...appState,
+                            layers: layersCopy.sort((a,b) => a.zIndex - b.zIndex)
+                        };
+                        pushHistory(newState);
+                        return;
+                    }
+                }
+            }
+            if(swapWithIndex !== -1) {
+                layersCopy[layerIndex].zIndex = maxLowerZ;
+                layersCopy[swapWithIndex].zIndex = currentZ;
+            } else { 
+                let minZ = Infinity;
+                layersCopy.forEach(l => { if (l.zIndex < minZ) minZ = l.zIndex });
+                if (currentZ >= minZ && minZ > 0) layersCopy[layerIndex].zIndex = minZ -1;
+                else if (currentZ >=minZ && minZ <=0 ) layersCopy[layerIndex].zIndex = minZ -1; 
+            }
+        }
+        const newState: AppState = {
+            ...appState,
+            layers: layersCopy.sort((a,b) => a.zIndex - b.zIndex)
+        };
+        pushHistory(newState);
     };
     
     const handleStateChange = <K extends keyof AppState>(key: K, value: AppState[K]) => {
@@ -575,7 +609,24 @@ const App: React.FC = () => {
     
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            // Prevent shortcuts in input/textarea fields
+            const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable) return;
+
+            // Undo: Ctrl+Z or Cmd+Z
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                handleUndo();
+                return;
+            }
+            // Redo: Ctrl+U or Cmd+U
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'u') {
+                e.preventDefault();
+                handleRedo();
+                return;
+            }
+            // Export: Ctrl+S or Cmd+S
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
                 e.preventDefault();
                 handleExport();
             }
@@ -583,7 +634,7 @@ const App: React.FC = () => {
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [appState]); // appState added to dependencies for export settings
+    }, [appState, history, future]);
 
     const backgroundTypeOptions: SegmentedControlOption<AppState['backgroundType']>[] = [
         { label: 'Egyszínű', value: 'solid' },
@@ -619,16 +670,18 @@ const App: React.FC = () => {
 
     // Drag & drop rétegsorrend handler
     const handleReorderLayers = (fromIndex: number, toIndex: number) => {
-        setAppState(prev => {
-            const sorted = [...prev.layers].sort((a, b) => b.zIndex - a.zIndex);
-            if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return prev;
-            const moved = sorted.splice(fromIndex, 1)[0];
-            sorted.splice(toIndex, 0, moved);
-            // Új zIndex kiosztás (legfelső: legnagyobb)
-            const maxZ = sorted.length > 0 ? Math.max(...sorted.map(l => l.zIndex)) : 0;
-            const newLayers = sorted.map((l, i) => ({ ...l, zIndex: maxZ - i }));
-            return { ...prev, layers: newLayers };
-        });
+        const sorted = [...appState.layers].sort((a, b) => b.zIndex - a.zIndex);
+        if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+        const moved = sorted.splice(fromIndex, 1)[0];
+        sorted.splice(toIndex, 0, moved);
+        // Új zIndex kiosztás (legfelső: legnagyobb)
+        const maxZ = sorted.length > 0 ? Math.max(...sorted.map(l => l.zIndex)) : 0;
+        const newLayers = sorted.map((l, i) => ({ ...l, zIndex: maxZ - i }));
+        const newState: AppState = {
+            ...appState,
+            layers: newLayers
+        };
+        pushHistory(newState);
     };
 
     useEffect(() => {
@@ -677,6 +730,12 @@ const App: React.FC = () => {
                             imageUrl={socialPreviewImageUrl} 
                             aspectRatio={appState.canvasWidth / appState.canvasHeight} 
                         />
+                    </div>
+
+                    {/* Undo/Redo buttons above General Settings */}
+                    <div className="flex gap-2 mb-4">
+                        <button onClick={handleUndo} disabled={history.length === 0} className="px-3 py-1.5 rounded bg-gray-200 text-gray-700 font-bold disabled:opacity-40">Visszavonás</button>
+                        <button onClick={handleRedo} disabled={future.length === 0} className="px-3 py-1.5 rounded bg-gray-200 text-gray-700 font-bold disabled:opacity-40">Újra</button>
                     </div>
 
                     <div className="space-y-6"> 
