@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Layer, LayerType } from '../types';
 import ControlPanelSection from './ControlPanelSection'; // Visszaállítva
 import IconButton from './IconButton';
@@ -35,6 +35,7 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
   onReorderLayers,
 }) => {
   const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const sortedLayers = [...layers].sort((a, b) => b.zIndex - a.zIndex); // Display top-most layer first
 
   const handleImageFileChange = (file: File) => {
@@ -50,9 +51,38 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
     return true; 
   }
 
+  // Drag & drop image to panel (canvas)
+  const handlePanelDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault();
+      if (panelRef.current) panelRef.current.classList.add('ring-2', 'ring-[#FF3B30]');
+    }
+  };
+  const handlePanelDragLeave = () => {
+    if (panelRef.current) panelRef.current.classList.remove('ring-2', 'ring-[#FF3B30]');
+  };
+  const handlePanelDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (panelRef.current) panelRef.current.classList.remove('ring-2', 'ring-[#FF3B30]');
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      // Végigmegyünk az összes képfájlon!
+      Array.from(e.dataTransfer.files).forEach(file => {
+        if (file.type.startsWith('image/')) {
+          onAddLayer('image', file);
+        }
+      });
+    }
+  };
+
   return (
     <ControlPanelSection title="Rétegek" isOpenDefault={true}>
-      <div className="space-y-2">
+      <div
+        ref={panelRef}
+        onDragOver={handlePanelDragOver}
+        onDragLeave={handlePanelDragLeave}
+        onDrop={handlePanelDrop}
+        className="space-y-2 transition-all"
+      >
         {sortedLayers.map((layer, index) => (
           <div
             key={layer.id}
