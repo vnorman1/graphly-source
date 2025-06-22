@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { AppState, Layer, TextLayer, LogoLayer, ImageLayer, TextAlign } from '../types';
-import { CANVAS_PADDING, LOGO_CANVAS_PADDING } from '../constants';
+import { BRAND_RED, CANVAS_PADDING, LOGO_CANVAS_PADDING } from '../constants';
 
 interface PreviewCanvasProps {
   appState: AppState;
@@ -702,7 +702,7 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
       `}</style>
       {showSafariFilterWarning && (
         <div className="safari-filter-warning-anim" style={{
-          background: '#ff9800', color: '#fff', fontWeight: 'bold', fontSize: 14, padding: '6px 12px', borderRadius: 6, marginBottom: 8,
+          background: BRAND_RED, color: '#fff', fontWeight: 'bold', fontSize: 14, padding: '6px 12px', borderRadius: 6, marginBottom: 8,
           display: 'inline-block',
           maxWidth: 400,
           boxShadow: '0 2px 12px 0 rgba(0,0,0,0.10)',
