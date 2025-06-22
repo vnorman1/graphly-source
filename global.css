@@ -36,8 +36,8 @@
 
       /* Egyedi szövegkijelölő (selection) szín - lazac árnyalat */
       ::selection {
-        background: #ffb3a7; /* lazac szín */
-        color: #1f2937; /* Tailwind gray-800, jól olvasható */
+        background: #FF3B30; /* lazac szín */
+        color: #ffffff; /* Tailwind gray-800, jól olvasható */
       }
       html {
   scroll-behavior: smooth;

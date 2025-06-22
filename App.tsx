@@ -107,7 +107,12 @@ const App: React.FC = () => {
             ...exportSettings, // Apply export settings
             gradient: { ...INITIAL_STATE.gradient, ...(loadedStatePartial.gradient || {}) },
             bgImage: loadedStatePartial.bgImage !== undefined ? loadedStatePartial.bgImage : INITIAL_STATE.bgImage, // FONTOS: bgImage mindig átkerüljön
-            bgImageFilters: { ...INITIAL_STATE.bgImageFilters, ...(loadedStatePartial.bgImageFilters || {}) },
+            // A filtereknél mindig számot csinálunk!
+            bgImageFilters: {
+                blur: Number((loadedStatePartial.bgImageFilters?.blur ?? INITIAL_STATE.bgImageFilters.blur)),
+                brightness: Number((loadedStatePartial.bgImageFilters?.brightness ?? INITIAL_STATE.bgImageFilters.brightness)),
+                contrast: Number((loadedStatePartial.bgImageFilters?.contrast ?? INITIAL_STATE.bgImageFilters.contrast)),
+            },
             overlay: { ...INITIAL_STATE.overlay, ...(loadedStatePartial.overlay || {}) },
             layers: mappedLayers,
         };
@@ -726,6 +731,7 @@ const App: React.FC = () => {
                                     <RangeInput id="bgBlur" label="Elmosás (Blur)" min={0} max={20} value={appState.bgImageFilters.blur} onChange={val => handleImageFilterChange('blur', val)} valueSuffix="px" />
                                     <RangeInput id="bgBrightness" label="Fényerő" min={0} max={200} step={5} value={appState.bgImageFilters.brightness} onChange={val => handleImageFilterChange('brightness', val)} valueSuffix="%" />
                                     <RangeInput id="bgContrast" label="Kontraszt" min={0} max={200} step={5} value={appState.bgImageFilters.contrast} onChange={val => handleImageFilterChange('contrast', val)} valueSuffix="%" />
+                                     <div className='font-italic text-sm text-gray-500'>A szűrők telefonra nem optimalizáltak!</div>
                                     <button 
                                         onClick={() => handleStateChange('bgImage', null)} 
                                         className="w-full text-sm font-semibold text-red-600 hover:text-red-800 py-2 rounded-md border border-red-300 hover:bg-red-50 transition-colors mt-2"

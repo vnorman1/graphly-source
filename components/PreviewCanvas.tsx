@@ -27,6 +27,10 @@ const loadImage = (src: string): Promise<HTMLImageElement> => {
       return;
     }
     const img = new Image();
+    // Set crossOrigin BEFORE src for CORS images
+    if (!src.startsWith('data:')) {
+      img.crossOrigin = "anonymous";
+    }
     img.onload = () => {
       imageCache.set(src, img);
       resolve(img);
@@ -51,6 +55,17 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
   const [loadedImages, setLoadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
   // ÚJ: háttérkép töltési állapot
   const [isBgImageLoading, setIsBgImageLoading] = useState(false);
+  const [isBgImageTainted, setIsBgImageTainted] = useState(false);
+
+  // Detect Safari (iOS/macOS) for filter warning
+  const [isSafari, setIsSafari] = useState(false);
+  useEffect(() => {
+    const ua = window.navigator.userAgent;
+    // iOS: has "Safari" but not "Chrome" or "CriOS" or "FxiOS"
+    // macOS: has "Safari" but not "Chrome" or "Chromium"
+    const isSafariBrowser = /Safari\//.test(ua) && !/Chrome|Chromium|CriOS|FxiOS/.test(ua);
+    setIsSafari(isSafariBrowser);
+  }, []);
 
   // Preload images for layers
   useEffect(() => {
@@ -438,12 +453,33 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
     if (appState.backgroundType === 'image') {
         if (bgImageElement) {
             ctx.save();
-            ctx.filter = `blur(${appState.bgImageFilters.blur}px) brightness(${appState.bgImageFilters.brightness}%) contrast(${appState.bgImageFilters.contrast}%)`;
-            ctx.drawImage(bgImageElement, 0, 0, canvas.width, canvas.height);
-            ctx.restore();
+            // If tainted, skip filter and show warning
+            if (isBgImageTainted) {
+              ctx.drawImage(bgImageElement, 0, 0, canvas.width, canvas.height);
+              ctx.restore();
+              // Draw warning overlay
+              ctx.save();
+              ctx.globalAlpha = 0.7;
+              ctx.fillStyle = '#ff0000';
+              ctx.fillRect(0, 0, canvas.width, 40);
+              ctx.globalAlpha = 1;
+              ctx.font = 'bold 16px sans-serif';
+              ctx.fillStyle = '#fff';
+              ctx.textAlign = 'center';
+              ctx.fillText('A kép nem támogatja a filtereket (CORS hiba).', canvas.width/2, 26);
+              ctx.restore();
+            } else {
+              const blur = Number(appState.bgImageFilters.blur ?? 0);
+              const brightness = Number(appState.bgImageFilters.brightness ?? 100);
+              const contrast = Number(appState.bgImageFilters.contrast ?? 100);
+              ctx.filter = `blur(${blur}px) brightness(${brightness}%) contrast(${contrast}%)`;
+              ctx.drawImage(bgImageElement, 0, 0, canvas.width, canvas.height);
+              ctx.filter = 'none';
+              ctx.restore();
+            }
         } else if (appState.bgImage && !isBgImageLoading) {
-            // Ha nem töltődik és nincs kép, akkor fallback szín
-            ctx.fillStyle = appState.bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = appState.bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
     }
 
@@ -475,7 +511,7 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
         onCanvasUpdate(newDataUrl);
       }
     }
-  }, [appState, getCanvasAndContext, onCanvasUpdate, drawLayer, loadedImages, isBgImageLoading]);
+  }, [appState, getCanvasAndContext, onCanvasUpdate, drawLayer, loadedImages, isBgImageLoading, isBgImageTainted, isSafari]);
   
   useEffect(() => {
     drawCanvas();
@@ -643,16 +679,47 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
   
   const cursorStyle = (draggingInfo || (hoveredLayerId && hoveredLayerId === appState.selectedLayerId)) ? 'move' : 'default';
 
+  // --- UI warning for Safari filter support ---
+  // Only show if backgroundType is image and any filter is non-default
+  const showSafariFilterWarning = isSafari && appState.backgroundType === 'image' && (
+    Number(appState.bgImageFilters.blur) > 0 ||
+    Number(appState.bgImageFilters.brightness) !== 100 ||
+    Number(appState.bgImageFilters.contrast) !== 100
+  );
+
   return (
-    <canvas
-      ref={canvasRef}
-      width={appState.canvasWidth}
-      height={appState.canvasHeight}
-      className="shadow-2xl w-full max-w-4xl rounded-lg bg-white" 
-      id="previewCanvas"
-      onMouseDown={handleMouseDown}
-      style={{ cursor: cursorStyle, touchAction: 'none' }} 
-    />
+    <div style={{position: 'relative'}}>
+      <style>{`
+        .safari-filter-warning-anim {
+          animation: safariFadeIn 0.7s cubic-bezier(0.4,0,0.2,1);
+          transition: opacity 0.3s;
+        }
+        @keyframes safariFadeIn {
+          0% { opacity: 0; transform: translateY(-10px) scale(0.98); }
+          60% { opacity: 1; transform: translateY(2px) scale(1.01); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
+      {showSafariFilterWarning && (
+        <div className="safari-filter-warning-anim" style={{
+          background: '#ff9800', color: '#fff', fontWeight: 'bold', fontSize: 14, padding: '6px 12px', borderRadius: 6, marginBottom: 8,
+          display: 'inline-block',
+          maxWidth: 400,
+          boxShadow: '0 2px 12px 0 rgba(0,0,0,0.10)',
+        }}>
+          A háttérkép filterek (blur, brightness, contrast) nem támogatottak Safariban.
+        </div>
+      )}
+      <canvas
+        ref={canvasRef}
+        width={appState.canvasWidth}
+        height={appState.canvasHeight}
+        className="shadow-2xl w-full max-w-4xl rounded-lg bg-white" 
+        id="previewCanvas"
+        onMouseDown={handleMouseDown}
+        style={{ cursor: cursorStyle, touchAction: 'none' }} 
+      />
+    </div>
   );
 };
 

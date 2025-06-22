@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { BRAND_RED } from '../constants';
 
 const PWAInstallPrompt: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -32,18 +33,23 @@ const PWAInstallPrompt: React.FC = () => {
       <button
         onClick={handleInstall}
         style={{
-          background: '#ffb3a7',
-          color: '#1f2937',
+          background: BRAND_RED,
+          color: '#fff',
           border: 'none',
           borderRadius: 8,
-          padding: '12px 32px',
-          fontWeight: 700,
-          fontSize: 18,
+          padding: '4px 12px',
+          fontWeight: 600,
+          fontSize: 13,
           boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           cursor: 'pointer',
+          minWidth: 0,
+          minHeight: 0,
+          transition: 'background 0.2s',
         }}
+        title="Telepítsd az alkalmazást!"
+        aria-label="Telepítsd az alkalmazást!"
       >
-        Telepítsd az alkalmazást!
+        Telepítsd az appot
       </button>
     </div>
   );

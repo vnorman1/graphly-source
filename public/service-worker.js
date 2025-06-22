@@ -34,7 +34,7 @@ self.addEventListener('fetch', event => {
       return response || fetch(event.request).catch(() => {
         // Offline fallback: ha index.html-t kér, adjuk vissza
         if (event.request.mode === 'navigate') {
-          return caches.match('/index.html');
+          return caches.match('./index.html');
         }
       });
     })
