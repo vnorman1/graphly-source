@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Layer, TextLayer, ImageLayer, LogoLayer } from '../types';
-import { FONT_OPTIONS, FONT_WEIGHT_OPTIONS, TEXT_ALIGN_OPTIONS, VERTICAL_ALIGN_OPTIONS } from '../constants';
+import { FONT_OPTIONS, FONT_WEIGHT_OPTIONS, TEXT_ALIGN_OPTIONS, VERTICAL_ALIGN_OPTIONS, BRAND_RED } from '../constants';
 
 interface QuickEditModalProps {
   layer: Layer | null;
@@ -231,18 +231,41 @@ const QuickEditModal: React.FC<QuickEditModalProps> = ({ layer, position, onClos
             step={0.05}
             value={(layer as ImageLayer).opacity}
             onChange={e => onUpdateLayer(layer.id, { opacity: parseFloat(e.target.value) })}
-            className="w-full"
+            className="w-full accent-[var(--brand-red)]"
+            style={{ accentColor: BRAND_RED }}
           />
           <span className="text-xs text-gray-600">{Math.round((layer as ImageLayer).opacity * 100)}%</span>
+
+          <label className="block text-xs font-medium text-gray-700">Méret (px)</label>
+          <input
+            type="range"
+            min={1}
+            max={4096}
+            step={1}
+            className="w-full accent-[var(--brand-red)]"
+            style={{ accentColor: BRAND_RED }}
+            value={(layer as ImageLayer).width}
+            onChange={e => {
+              const newWidth = Number(e.target.value);
+              const aspect = (layer as ImageLayer).originalAspectRatio;
+              onUpdateLayer(layer.id, {
+                width: newWidth,
+                height: Math.round(newWidth / aspect)
+              });
+            }}
+          />
+          <span className="text-xs text-gray-600">{(layer as ImageLayer).width}px × {(layer as ImageLayer).height}px</span>
+
           <label className="block text-xs font-medium text-gray-700">Lekerekítés</label>
           <input
             type="range"
             min={0}
-            max={100}
+            max={Math.min((layer as ImageLayer).width, (layer as ImageLayer).height)}
             step={1}
             value={(layer as ImageLayer).borderRadius}
             onChange={e => onUpdateLayer(layer.id, { borderRadius: Number(e.target.value) })}
-            className="w-full"
+            className="w-full accent-[var(--brand-red)]"
+            style={{ accentColor: BRAND_RED }}
           />
           <span className="text-xs text-gray-600">{(layer as ImageLayer).borderRadius}px</span>
           <label className="block text-xs font-medium text-gray-700">Forgatás (°)</label>
