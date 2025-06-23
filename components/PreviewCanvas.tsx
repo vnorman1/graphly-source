@@ -794,14 +794,7 @@ const PreviewCanvas: React.FC<PreviewCanvasProps & {
       if (data && onAddStoredImageLayer) {
         const dropData = JSON.parse(data);
         
-        if (dropData.type === 'stored-image') {
-          // Mivel nem használhatunk hook-ot itt, az App.tsx-ben kell kezelni
-          // Jelenleg csak konzolra írjuk
-          console.log('Tárolt kép drop:', dropData);
-          // Itt kellene valahogy a blob-ot lekérni az ID alapján és meghívni onAddStoredImageLayer-t
-          // De mivel ez komplikált, egyelőre csak alert-tel jelzem
-          alert('A drag & drop funkció hamarosan elérhető lesz. Kérlek, használd a kattintást!');
-        }
+        if (dropData.type === 'stored-image') {}
       }
     } catch (error) {
       console.error('Hiba a drop kezeléskor:', error);

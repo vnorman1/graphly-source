@@ -833,6 +833,26 @@ const App: React.FC = () => {
         return <Preloader />;
     }
 
+    // Drag'n'drop: képtárból vászonra
+    const handleDropOnCanvas = async (event: React.DragEvent<HTMLDivElement | HTMLCanvasElement>) => {
+        event.preventDefault();
+        try {
+            const data = event.dataTransfer.getData('application/json');
+            if (!data) return;
+            const parsed = JSON.parse(data);
+            if (parsed.type === 'stored-image' && parsed.imageId) {
+                const imageId = parsed.imageId;
+                const filename = parsed.filename || 'kép';
+                const blob = await getImage(imageId);
+                if (blob) {
+                    await handleAddStoredImageLayer(blob, filename, imageId);
+                }
+            }
+        } catch (e) {
+            // ignore
+        }
+    };
+
     return (
         <div className={`min-h-screen font-['Inter'] ${isPreviewVisible ? '' : 'grid grid-cols-1 lg:grid-cols-3'}`}>
             {/* Left Control Panel - Conditional Rendering */}
@@ -1114,6 +1134,8 @@ const App: React.FC = () => {
                         ? 'w-full min-h-screen justify-start pt-12' 
                         : 'lg:col-span-2 justify-center max-h-screen lg:max-h-none'
                     }`}
+                onDragOver={e => e.preventDefault()}
+                onDrop={handleDropOnCanvas}
             >
                 <PreviewCanvas 
                     appState={appState} 
@@ -1121,7 +1143,6 @@ const App: React.FC = () => {
                     onLayerPositionChange={handleLayerPositionChange}
                     onLayerSelect={selectLayer}
                     onAddStoredImageLayer={handleAddStoredImageLayer}
-                    // Grid overlay props
                     showGrid={!isPreviewVisible && showGrid}
                     gridDensity={gridDensity}
                     gridStyle={gridStyle}
