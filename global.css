@@ -62,8 +62,20 @@
         background-color: white; /* Ensure white background */
       }
 
+input[type="checkbox"] {
+  transition: transform 0.18s cubic-bezier(.34,1.56,.64,1), box-shadow 0.18s;
+}
 input[type="checkbox"]:checked {
   accent-color: #FF3B30;
+  transform: scale(1.18);
+  box-shadow: 0 0 0 2px #FF3B3033;
+}
+input[type="checkbox"]:active {
+  transform: scale(0.92);
+}
+input[type="checkbox"]:not(:checked) {
+  transform: scale(1);
+  box-shadow: none;
 }
 
 /* Animációk grid modalhoz */

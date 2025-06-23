@@ -30,7 +30,7 @@ const defaultTextLayer: TextLayer = {
     letterSpacing: 0,
     lineHeightMultiplier: 1.2,
     textAlign: 'left',
-    verticalAlign: 'bottom',
+    verticalAlign: 'top',
     textShadow: {
         enabled: false,
         color: '#000000',

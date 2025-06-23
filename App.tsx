@@ -28,6 +28,7 @@ import LayersPanel from './components/LayersPanel'; // New
 import LayerSpecificSettings from './components/LayerSpecificSettings'; // New
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import Preloader from './components/Preloader';
+import ShareButtons from './components/ShareButtons';
 
 // import LayoutTextLeftIcon from './components/icons/LayoutTextLeftIcon';
 // import LayoutTextCenterIcon from './components/icons/LayoutTextCenterIcon';
@@ -895,16 +896,25 @@ const App: React.FC = () => {
                     </div>
                     
                     <div className="mt-10 pt-6 border-t-2 border-gray-300">
-                         <h2 className="text-xl font-black mb-4 text-gray-900">Exportálás</h2>
+                         <h2 className="text-xl font-black mb-4 text-gray-900">Exportálás </h2>
                          <p className="text-sm text-gray-700 mb-4">Válassz célplatformot a megfelelő méretarányhoz. A letöltéshez használhatod a <kbd className="font-mono bg-gray-200 px-1 py-0.5 rounded text-xs text-gray-800">Cmd/Ctrl+S</kbd> parancsot is.</p>
                          <div className="space-y-3">
                              <button onClick={() => handleExport()} className={`w-full bg-[#FF3B30] text-white font-bold uppercase py-3.5 rounded-md hover:bg-red-700 transition-colors`}>
                                 Letöltés ({appState.canvasWidth}x{appState.canvasHeight}px)
                             </button>
-                             <div className="grid grid-cols-2 gap-3">
+                            
+                            
+                            <div className="grid grid-cols-2 gap-3">
                                 <button onClick={() => handleExport({w: 1200, h: 600}, 'twitter-share')} className="w-full bg-gray-700 text-white font-bold py-3 rounded-md hover:bg-gray-800 transition-colors">Twitter (2:1)</button>
                                 <button onClick={() => handleExport({w: 1200, h: 628}, 'facebook-share')} className="w-full bg-gray-700 text-white font-bold py-3 rounded-md hover:bg-gray-800 transition-colors">Facebook (1.91:1)</button>
                              </div>
+                            <ShareButtons getImageBlob={async () => {
+  const mainCanvas = document.getElementById('previewCanvas') as HTMLCanvasElement | null;
+  if (!mainCanvas) return null;
+  return await new Promise<Blob | null>(resolve => {
+    mainCanvas.toBlob(blob => resolve(blob), 'image/png');
+  });
+}} />
                             <div className="text-center text-sm text-gray-500 mt-8">
                               Készítette: <span className="font-semibold text-black"> [V.N.] </span> &copy; {new Date().getFullYear()}
                             </div>

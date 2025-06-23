@@ -265,22 +265,24 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
               {layer.name}
             </span>
             <div className="flex items-center space-x-1 ml-2">
-              <IconButton
-                onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); onMoveLayer(layer.id, 'up'); }}
-                title="Réteg feljebb"
-                className="p-1.5 text-gray-500 hover:text-gray-700"
-                disabled={index === 0} 
-              >
-                <ArrowUpIcon className="w-4 h-4" />
-              </IconButton>
-              <IconButton
-                onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); onMoveLayer(layer.id, 'down'); }}
-                title="Réteg lejjebb"
-                className="p-1.5 text-gray-500 hover:text-gray-700"
-                disabled={index === sortedLayers.length -1} 
-              >
-                <ArrowDownIcon className="w-4 h-4" />
-              </IconButton>
+              {index !== 0 && (
+                <IconButton
+                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); onMoveLayer(layer.id, 'up'); }}
+                  title="Réteg feljebb"
+                  className="p-1.5 text-gray-500 hover:text-gray-700"
+                >
+                  <ArrowUpIcon className="w-4 h-4" />
+                </IconButton>
+              )}
+              {index !== sortedLayers.length - 1 && (
+                <IconButton
+                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); onMoveLayer(layer.id, 'down'); }}
+                  title="Réteg lejjebb"
+                  className="p-1.5 text-gray-500 hover:text-gray-700"
+                >
+                  <ArrowDownIcon className="w-4 h-4" />
+                </IconButton>
+              )}
               <IconButton
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); onToggleVisibility(layer.id); }}
                 title={layer.isVisible ? 'Réteg elrejtése' : 'Réteg megjelenítése'}
