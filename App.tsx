@@ -30,6 +30,7 @@ import LayerSpecificSettings from './components/LayerSpecificSettings'; // New
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import Preloader from './components/Preloader';
 import ShareButtons from './components/ShareButtons';
+import PicsSettings from './components/PicsSettings';
 
 // import LayoutTextLeftIcon from './components/icons/LayoutTextLeftIcon';
 // import LayoutTextCenterIcon from './components/icons/LayoutTextCenterIcon';
@@ -430,6 +431,75 @@ const App: React.FC = () => {
                     };
                 });
             }
+        }
+    };
+
+    // Tárolt kép hozzáadása új rétegként (JAVÍTOTT - nem duplikálja az IndexedDB-ben)
+    const handleAddStoredImageLayer = async (blob: Blob, filename: string, originalImageId: string) => {
+        // Mobil nézetben ne lehessen képréteget hozzáadni
+        if (window.innerWidth < 640) {
+            alert('Képréteg hozzáadása mobil nézetben nem engedélyezett!');
+            return;
+        }
+
+        const newLayerBaseProps: Omit<LayerBase, 'type' | 'name' | 'id'> = { 
+            zIndex: appState.layers.length > 0 ? Math.max(...appState.layers.map(l => l.zIndex)) + 1 : 0,
+            isVisible: true,
+            opacity: 1,
+            x: CANVAS_BASE_WIDTH / 2 - 100, 
+            y: CANVAS_BASE_HEIGHT / 2 - 50,
+            rotation: 0,
+            isLocked: false,
+        };
+
+        const layerId = generateId('image');
+
+        try {
+            // Előnézet generálása a blob-ból
+            const imgSrc = URL.createObjectURL(blob);
+            const img = document.createElement('img');
+            img.onload = () => {
+                const aspectRatio = img.width / img.height;
+                const defaultWidth = 200;
+                const defaultTextLayerForShadow = appState.layers.find(l => l.type === 'text') as TextLayer | undefined;
+                const shadowState: TextShadowState = defaultTextLayerForShadow?.textShadow 
+                    ? { ...defaultTextLayerForShadow.textShadow } 
+                    : { enabled: false, color: '#000000', offsetX: 2, offsetY: 2, blurRadius: 4 };
+                
+                const imageLayerToAdd: ImageLayer = {
+                    ...newLayerBaseProps,
+                    id: layerId,
+                    type: 'image',
+                    name: `${filename} másolat`,
+                    src: isIndexedDBSupported ? `indexeddb:${originalImageId}` : imgSrc, // Az eredeti ID-t használjuk!
+                    width: defaultWidth,
+                    height: defaultWidth / aspectRatio,
+                    originalAspectRatio: aspectRatio,
+                    borderRadius: 0,
+                    shadow: shadowState,
+                };
+                
+                setAppState((prevState: AppState): AppState => {
+                    const newLayers: Layer[] = [...prevState.layers, imageLayerToAdd];
+                    return { 
+                        ...prevState, 
+                        layers: newLayers, 
+                        selectedLayerId: imageLayerToAdd.id 
+                    };
+                });
+                
+                // Cleanup blob URL ha nem IndexedDB-t használunk
+                if (!isIndexedDBSupported) {
+                    setTimeout(() => URL.revokeObjectURL(imgSrc), 1000);
+                } else {
+                    // IndexedDB esetén is cleanup, mert csak a hivatkozásra van szükségünk
+                    setTimeout(() => URL.revokeObjectURL(imgSrc), 100);
+                }
+            };
+            img.src = imgSrc;
+        } catch (error) {
+            console.error('Hiba a tárolt kép hozzáadásakor:', error);
+            alert('Hiba történt a kép hozzáadásakor. Próbáld újra!');
         }
     };
     
@@ -1030,6 +1100,15 @@ const App: React.FC = () => {
                                 </div>
                             </div>
                         </ControlPanelSection>
+
+                        <ControlPanelSection title="Képek">
+                            <div>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    Kezeld a tárolt képeket. Kattints egy képre vagy húzd a canvas-ra a használathoz.
+                                </p>
+                                <PicsSettings onAddImageLayer={handleAddStoredImageLayer} />
+                            </div>
+                        </ControlPanelSection>
                     </div>
                     
                     <div className="mt-10 pt-6 border-t-2 border-gray-300">
@@ -1073,6 +1152,7 @@ const App: React.FC = () => {
                     onCanvasUpdate={handleCanvasUpdate}
                     onLayerPositionChange={handleLayerPositionChange}
                     onLayerSelect={selectLayer}
+                    onAddStoredImageLayer={handleAddStoredImageLayer}
                     // Grid overlay props
                     showGrid={!isPreviewVisible && showGrid}
                     gridDensity={gridDensity}

@@ -5,7 +5,7 @@ const DB_NAME = 'OGImageDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'images';
 
-interface ImageRecord {
+export interface ImageRecord {
   id: string;
   blob: Blob;
   filename: string;
