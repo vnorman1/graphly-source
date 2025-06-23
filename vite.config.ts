@@ -7,6 +7,7 @@ export default defineConfig(() => {
   // Vite config Tailwind-hoz: a tailwindcss PostCSS pluginnal működik, külön plugin nem kell.
   // Az alias beállítás marad.
   return {
+    base: './',
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
