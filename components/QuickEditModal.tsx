@@ -82,6 +82,24 @@ const QuickEditModal: React.FC<QuickEditModalProps> = ({ layer, position, onClos
             value={(layer as TextLayer).content}
             onChange={e => onUpdateLayer(layer.id, { content: e.target.value })}
           />
+          <div className="flex gap-3 items-center">
+            <label className="flex items-center gap-1 text-xs font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={!!(layer as TextLayer).italic}
+                onChange={e => onUpdateLayer(layer.id, { italic: e.target.checked })}
+              />
+              Dőlt
+            </label>
+            <label className="flex items-center gap-1 text-xs font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={!!(layer as TextLayer).underline}
+                onChange={e => onUpdateLayer(layer.id, { underline: e.target.checked })}
+              />
+              Aláhúzott
+            </label>
+          </div>
           <label className="block text-xs font-medium text-gray-700">Szín</label>
           <input
             type="color"

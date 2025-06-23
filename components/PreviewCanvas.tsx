@@ -172,7 +172,8 @@ const PreviewCanvas: React.FC<PreviewCanvasProps & {
   }, []);
 
   const getWrappedLines = useCallback((ctx: CanvasRenderingContext2D, layer: TextLayer): string[] => {
-    ctx.font = `${layer.fontWeight} ${layer.fontSize}px "${layer.fontFamily}", sans-serif`;
+    const fontStyle = layer.italic ? 'italic' : 'normal';
+    ctx.font = `${fontStyle} ${layer.fontWeight} ${layer.fontSize}px "${layer.fontFamily}", sans-serif`;
     if (CSS.supports('letter-spacing', `${layer.letterSpacing}px`)) {
       ctx.letterSpacing = `${layer.letterSpacing}px`;
     } else {
@@ -226,33 +227,27 @@ const PreviewCanvas: React.FC<PreviewCanvasProps & {
 
     if (layer.type === 'text') {
         const textLayer = layer as TextLayer;
-        ctx.font = `${textLayer.fontWeight} ${textLayer.fontSize}px "${textLayer.fontFamily}", sans-serif`;
+        // FONT STYLE: italic
+        const fontStyle = textLayer.italic ? 'italic' : 'normal';
+        ctx.font = `${fontStyle} ${textLayer.fontWeight} ${textLayer.fontSize}px "${textLayer.fontFamily}", sans-serif`;
         if (CSS.supports('letter-spacing', `${textLayer.letterSpacing}px`)) ctx.letterSpacing = `${textLayer.letterSpacing}px`;
         const lines = getWrappedLines(ctx, textLayer);
         ctx.letterSpacing = '0px';
-        
         let textBlockWidth = 0;
         if (lines.length > 0) {
-           ctx.font = `${textLayer.fontWeight} ${textLayer.fontSize}px "${textLayer.fontFamily}", sans-serif`;
+           ctx.font = `${fontStyle} ${textLayer.fontWeight} ${textLayer.fontSize}px "${textLayer.fontFamily}", sans-serif`;
            if (CSS.supports('letter-spacing', `${textLayer.letterSpacing}px`)) ctx.letterSpacing = `${textLayer.letterSpacing}px`;
            textBlockWidth = Math.max(...lines.map(line => ctx.measureText(line).width));
            ctx.letterSpacing = '0px';
         }
         const textBlockHeight = (lines.length > 0 ? (lines.length -1) * (textLayer.fontSize * textLayer.lineHeightMultiplier) : 0) + textLayer.fontSize;
-        
-        let textRenderAnchorX = textLayer.x; // layer.x is the anchor point for textAlign
-        
-        // actualDrawX for text is the calculated top-left X for the bounding box
+        let textRenderAnchorX = textLayer.x;
         if(textLayer.textAlign === 'center') actualDrawX = textRenderAnchorX - textBlockWidth / 2;
         else if(textLayer.textAlign === 'right') actualDrawX = textRenderAnchorX - textBlockWidth;
-        else actualDrawX = textRenderAnchorX; // left aligned
-
-        // For vertical alignment, layer.y is the anchor.
-        // actualDrawY for text is the calculated top-left Y for the bounding box.
+        else actualDrawX = textRenderAnchorX;
         if (textLayer.verticalAlign === 'middle') actualDrawY = textLayer.y - textBlockHeight / 2;
         else if (textLayer.verticalAlign === 'bottom') actualDrawY = textLayer.y - textBlockHeight;
-        else actualDrawY = textLayer.y; // top aligned
-        
+        else actualDrawY = textLayer.y;
         elementCenterX = actualDrawX + textBlockWidth / 2;
         elementCenterY = actualDrawY + textBlockHeight / 2;
 
@@ -292,69 +287,66 @@ const PreviewCanvas: React.FC<PreviewCanvasProps & {
     if (layer.type === 'text') {
         const textLayer = layer as TextLayer;
         ctx.fillStyle = textLayer.textColor;
-        ctx.font = `${textLayer.fontWeight} ${textLayer.fontSize}px "${textLayer.fontFamily}", sans-serif`;
-        // FONTOS: per-karakter rajzolásnál mindig 'left' legyen!
+        const fontStyle = textLayer.italic ? 'italic' : 'normal';
+        ctx.font = `${fontStyle} ${textLayer.fontWeight} ${textLayer.fontSize}px "${textLayer.fontFamily}", sans-serif`;
         ctx.textAlign = 'left';
         if (CSS.supports('letter-spacing', `${textLayer.letterSpacing}px`)) {
           ctx.letterSpacing = `${textLayer.letterSpacing}px`;
         }
-
         if (textLayer.textShadow.enabled) {
             ctx.shadowColor = textLayer.textShadow.color;
             ctx.shadowOffsetX = textLayer.textShadow.offsetX;
             ctx.shadowOffsetY = textLayer.textShadow.offsetY;
             ctx.shadowBlur = textLayer.textShadow.blurRadius;
         }
-
         const lines = getWrappedLines(ctx, textLayer); 
         const lineHeight = textLayer.fontSize * textLayer.lineHeightMultiplier;
-        
-        // actualDrawY is already calculated to be the top of the text block
-        // layer.x is the horizontal anchor for textAlign
-        // For text drawing, y position is baseline-dependent.
         let lineDrawY = actualDrawY;
         if (textLayer.verticalAlign === 'top') {
             ctx.textBaseline = 'top';
             lineDrawY = actualDrawY;
         } else if (textLayer.verticalAlign === 'middle') {
             ctx.textBaseline = 'middle';
-            // if actualDrawY is top of block, middle of first line is actualDrawY + lineHeight/2
             lineDrawY = actualDrawY + lineHeight / 2;
-        } else { // bottom
+        } else {
             ctx.textBaseline = 'bottom';
-            // if actualDrawY is top of block, bottom of first line is actualDrawY + lineHeight
             lineDrawY = actualDrawY + lineHeight;
         }
-
         lines.forEach((line, i) => {
             let x = textLayer.x;
             let y = lineDrawY + (i * lineHeight);
-            // Teljes szélesség: karakterek + letterSpacing
             let totalWidth = 0;
             for (let c = 0; c < line.length; c++) {
                 totalWidth += ctx.measureText(line[c]).width;
             }
             if (line.length > 1) totalWidth += (line.length - 1) * textLayer.letterSpacing;
-            // Igazítás szerinti kezdőpozíció
             let currentX = x;
             if (textLayer.textAlign === 'center') {
                 currentX = x - totalWidth / 2;
             } else if (textLayer.textAlign === 'right') {
                 currentX = x - totalWidth;
             }
-            // FONTOS: per-karakter rajzolásnál mindig 'left' legyen!
             ctx.textAlign = 'left';
-            // Karakterenkénti rajzolás
             for (let c = 0; c < line.length; c++) {
                 const char = line[c];
                 ctx.fillText(char, currentX, y);
                 currentX += ctx.measureText(char).width + textLayer.letterSpacing;
             }
+            // UNDERLINE: ha szükséges (a baseline alatt, kb. 1/8 fontmérettel lejjebb)
+            if (textLayer.underline) {
+                ctx.save();
+                ctx.strokeStyle = textLayer.textColor;
+                ctx.lineWidth = Math.max(1, Math.round(textLayer.fontSize / 16));
+                // baseline alatt húzzuk meg a vonalat
+                const underlineY = y + textLayer.fontSize * 0.15;
+                ctx.beginPath();
+                ctx.moveTo(currentX - totalWidth, underlineY);
+                ctx.lineTo(currentX, underlineY);
+                ctx.stroke();
+                ctx.restore();
+            }
         });
-        
         ctx.shadowColor = 'transparent'; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; ctx.shadowBlur = 0;
-        // ctx.letterSpacing = '0px'; // Eltávolítva, mert nem létezik
-
     } else if (layer.type === 'logo') {
         const logoLayer = layer as LogoLayer;
         const img = loadedImages.get(logoLayer.src!);
@@ -761,6 +753,25 @@ const PreviewCanvas: React.FC<PreviewCanvasProps & {
       y: event.clientY - rect.top,
     });
   };
+
+  // Billentyűparancsok: ctrl/cmd+I (italic), ctrl/cmd+U (underline)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (!appState.selectedLayerId) return;
+      const selected = appState.layers.find(l => l.id === appState.selectedLayerId);
+      if (!selected || selected.type !== 'text') return;
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'i' || e.key === 'I')) {
+        e.preventDefault();
+        onUpdateLayer(selected.id, { italic: !(selected as TextLayer).italic });
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'u' || e.key === 'U')) {
+        e.preventDefault();
+        onUpdateLayer(selected.id, { underline: !(selected as TextLayer).underline });
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [appState.selectedLayerId, appState.layers, onUpdateLayer]);
 
   return (
     <div className="relative w-full max-w-4xl" style={{}}>

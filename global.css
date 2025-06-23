@@ -62,6 +62,10 @@
         background-color: white; /* Ensure white background */
       }
 
+input[type="checkbox"]:checked {
+  accent-color: #FF3B30;
+}
+
 /* Animációk grid modalhoz */
 .animate-fade-in {
   opacity: 0;

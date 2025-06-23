@@ -1,4 +1,3 @@
-
 export type LayerType = 'text' | 'logo' | 'image';
 export type TextAlign = 'left' | 'center' | 'right';
 export type VerticalAlign = 'top' | 'middle' | 'bottom'; // Added for more comprehensive text control
@@ -44,6 +43,8 @@ export interface TextLayer extends LayerBase {
   verticalAlign: VerticalAlign; // Added
   width?: number; // Optional: for fixed width text box, otherwise auto
   textShadow: TextShadowState;
+  italic?: boolean;
+  underline?: boolean;
 }
 
 export interface LogoLayer extends LayerBase {

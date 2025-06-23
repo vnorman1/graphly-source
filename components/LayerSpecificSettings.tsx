@@ -116,6 +116,21 @@ const LayerSpecificSettings: React.FC<LayerSpecificSettingsProps> = ({
           <RangeInput id={`${selectedLayer.id}_letterSpacing`} label="Betűköz" min={-10} max={50} step={0.1} value={selectedLayer.letterSpacing} onChange={val => onUpdateLayer(selectedLayer.id, { letterSpacing: val })} valueSuffix="px" />
           <RangeInput id={`${selectedLayer.id}_lineHeight`} label="Sormagasság" min={0.5} max={3} step={0.05} value={selectedLayer.lineHeightMultiplier} onChange={val => onUpdateLayer(selectedLayer.id, { lineHeightMultiplier: val })} valueSuffix="x" />
 
+          <div className="flex gap-4 mb-2">
+            <CheckboxInput
+              id={`${selectedLayer.id}_italic`}
+              label="Dőlt"
+              checked={!!selectedLayer.italic}
+              onChange={val => onUpdateLayer(selectedLayer.id, { italic: val })}
+            />
+            <CheckboxInput
+              id={`${selectedLayer.id}_underline`}
+              label="Aláhúzott"
+              checked={!!selectedLayer.underline}
+              onChange={val => onUpdateLayer(selectedLayer.id, { underline: val })}
+            />
+          </div>
+
           <div className="pt-4 mt-4 border-t border-gray-200">
             <CheckboxInput id={`${selectedLayer.id}_textShadowEnabled`} label="Szövegárnyék" checked={selectedLayer.textShadow.enabled} onChange={(val: boolean) => handleShadowChange('enabled', val)} />
             {selectedLayer.textShadow.enabled && (
