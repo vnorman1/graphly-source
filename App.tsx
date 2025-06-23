@@ -926,6 +926,8 @@ const App: React.FC = () => {
                     gridDensity={gridDensity}
                     gridStyle={gridStyle}
                     gridOpacity={gridOpacity}
+                    selectedLayer={selectedLayer}
+                    onUpdateLayer={updateLayer}
                 />
                 <button
                     onClick={() => setIsPreviewVisible(!isPreviewVisible)}

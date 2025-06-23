@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Layer, LayerType } from '../types';
 import ControlPanelSection from './ControlPanelSection'; // Visszaállítva
 import IconButton from './IconButton';
@@ -99,6 +99,31 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
 
   // Grid overlay UI state (csak a beállítás-panel láthatósága marad lokális)
   const [showGridSettings, setShowGridSettings] = useState(false);
+  const [isGridSettingsClosing, setIsGridSettingsClosing] = useState(false);
+  const gridSettingsRef = useRef<HTMLDivElement>(null);
+
+  // Outside click handler for grid settings modal
+  useEffect(() => {
+    if (!(showGrid && showGridSettings)) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (gridSettingsRef.current && !gridSettingsRef.current.contains(event.target as Node)) {
+        setIsGridSettingsClosing(true);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showGrid, showGridSettings]);
+
+  // After animation, hide modal
+  useEffect(() => {
+    if (isGridSettingsClosing) {
+      const timeout = setTimeout(() => {
+        setShowGridSettings(false);
+        setIsGridSettingsClosing(false);
+      }, 200); // match animation duration
+      return () => clearTimeout(timeout);
+    }
+  }, [isGridSettingsClosing]);
 
   return (
     <ControlPanelSection title="Rétegek" isOpenDefault={true}>
@@ -119,12 +144,17 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
         </button>
         {/* Lebegő beállítás-panel, csak ha aktív a grid */}
         {showGrid && showGridSettings && (
-          <div className="absolute left-1/2 top-full z-10 mt-2 -translate-x-1/2 w-64 bg-white border border-gray-200 rounded-xl shadow-lg p-4 flex flex-col gap-3 animate-fade-in">
+          <div
+            ref={gridSettingsRef}
+            className={`absolute left-1/2 top-full z-10 mt-2 -translate-x-1/2 w-64 bg-white border border-gray-200 rounded-xl shadow-lg p-4 flex flex-col gap-3 animate-fade-in transition-all duration-200
+              ${isGridSettingsClosing ? 'animate-fade-out pointer-events-none opacity-0 scale-95' : 'opacity-100 scale-100'}`}
+            style={{ transition: 'opacity 0.2s, transform 0.2s' }}
+          >
             <div className="flex items-center justify-between">
               <span className="font-semibold text-gray-700 text-sm">Grid beállítások</span>
               <button
                 className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1 rounded focus:outline-none"
-                onClick={() => setShowGridSettings(false)}
+                onClick={() => setIsGridSettingsClosing(true)}
                 title="Beállítások elrejtése"
               >
                 ✕
@@ -274,3 +304,10 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
 };
 
 export default LayersPanel;
+
+// Animációk a modalhoz (fade-in, fade-out)
+// Add this to your global CSS if not present:
+// .animate-fade-in { opacity: 0; animation: fadeIn 0.2s forwards; }
+// .animate-fade-out { opacity: 1; animation: fadeOut 0.2s forwards; }
+// @keyframes fadeIn { to { opacity: 1; transform: scale(1); } from { opacity: 0; transform: scale(0.95); } }
+// @keyframes fadeOut { to { opacity: 0; transform: scale(0.95); } from { opacity: 1; transform: scale(1); } }

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { AppState, Layer, TextLayer, LogoLayer, ImageLayer, TextAlign } from '../types';
+import { AppState, Layer, TextLayer, LogoLayer, ImageLayer } from '../types';
 import { BRAND_RED, CANVAS_PADDING, LOGO_CANVAS_PADDING } from '../constants';
+import QuickEditModal from './QuickEditModal';
 
 interface PreviewCanvasProps {
   appState: AppState;
@@ -48,14 +49,19 @@ const loadImage = (src: string): Promise<HTMLImageElement> => {
 };
 
 
-const PreviewCanvas: React.FC<PreviewCanvasProps> = ({ 
-    appState, 
-    onCanvasUpdate,
-    onLayerPositionChange,
-    showGrid,
-    gridDensity,
-    gridStyle,
-    gridOpacity
+const PreviewCanvas: React.FC<PreviewCanvasProps & {
+  selectedLayer: Layer | null;
+  onUpdateLayer: (layerId: string, updates: Partial<Layer>) => void;
+}> = ({
+  appState, 
+  onCanvasUpdate,
+  onLayerPositionChange,
+  showGrid,
+  gridDensity,
+  gridStyle,
+  gridOpacity,
+  selectedLayer,
+  onUpdateLayer,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [draggingInfo, setDraggingInfo] = useState<DraggableElementInfo>(null);
@@ -63,6 +69,7 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
   const [loadedImages, setLoadedImages] = useState<Map<string, HTMLImageElement>>(new Map());
   // ÚJ: háttérkép töltési állapot
   const [isBgImageLoading, setIsBgImageLoading] = useState(false);
+  const [quickEditModal, setQuickEditModal] = useState<{ x: number; y: number } | null>(null);
 
   // Detect Safari (iOS/macOS) for filter warning
   const [isSafari, setIsSafari] = useState(false);
@@ -727,6 +734,19 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
     );
   };
 
+  // Right-click handler for canvas
+  const handleContextMenu = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    if (!selectedLayer) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    setQuickEditModal({
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    });
+  };
+
   return (
     <div className="relative w-full max-w-4xl" style={{}}>
       <style>{`
@@ -758,12 +778,21 @@ const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
           className="shadow-2xl w-full max-w-4xl rounded-lg bg-white block"
           id="previewCanvas"
           onMouseDown={handleMouseDown}
+          onContextMenu={handleContextMenu}
           style={{ cursor: cursorStyle, touchAction: 'none', display: 'block' }}
         />
         {/* Grid overlay csak szerkesztő módban, exportnál nem! */}
         <div className="pointer-events-none absolute inset-0 z-10 w-full h-full overflow-hidden rounded-lg">
           {renderGridOverlay()}
         </div>
+        {quickEditModal && selectedLayer && (
+          <QuickEditModal
+            layer={selectedLayer}
+            position={quickEditModal}
+            onClose={() => setQuickEditModal(null)}
+            onUpdateLayer={onUpdateLayer}
+          />
+        )}
       </div>
     </div>
   );

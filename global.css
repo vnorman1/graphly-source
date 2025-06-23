@@ -61,3 +61,21 @@
         color: #1f2937; /* Tailwind gray-800 for better readability */
         background-color: white; /* Ensure white background */
       }
+
+/* Animációk grid modalhoz */
+.animate-fade-in {
+  opacity: 0;
+  animation: fadeIn 0.2s forwards;
+}
+.animate-fade-out {
+  opacity: 1;
+  animation: fadeOut 0.2s forwards;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes fadeOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.95); }
+}

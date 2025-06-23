@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Layer, TextLayer, LogoLayer, ImageLayer, LayerSpecificSettingsProps, TextShadowState, LayerBase, LogoCornerPosition } from '../types';
 import ControlPanelSection from './ControlPanelSection'; // Hozzáadva
@@ -28,6 +27,9 @@ const LayerSpecificSettings: React.FC<LayerSpecificSettingsProps> = ({
       </div>
     );
   }
+
+  // Detect if mobile (window width < 640)
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
   const handleLayerBaseChange = (property: keyof LayerBase, value: any) => {
     onUpdateLayer(selectedLayer.id, { [property]: value } as Partial<LayerBase>);
@@ -130,7 +132,7 @@ const LayerSpecificSettings: React.FC<LayerSpecificSettingsProps> = ({
       )}
 
       {/* Logo Layer Specific Settings */}
-      {selectedLayer.type === 'logo' && (
+      {selectedLayer.type === 'logo' && !isMobile && (
         <>
           <FileUploadInput id={`${selectedLayer.id}_logoSrc`} label="Logó képfájl" buttonText="Logó cseréje..." accept="image/*" onChange={handleLogoFileChange} />
           {!selectedLayer.src && <p className="text-xs text-yellow-600 mt-1">Nincs logókép feltöltve.</p>}
@@ -169,6 +171,11 @@ const LayerSpecificSettings: React.FC<LayerSpecificSettingsProps> = ({
           )}
         </>
       )}
+      {selectedLayer.type === 'logo' && isMobile && (
+        <div className="p-3 bg-yellow-100 border border-yellow-300 rounded text-yellow-800 text-xs mt-2">
+          Logó beállításai csak asztali nézetben érhetők el!
+        </div>
+      )}
 
       {/* Image Layer Specific Settings */}
       {selectedLayer.type === 'image' && (
@@ -189,19 +196,6 @@ const LayerSpecificSettings: React.FC<LayerSpecificSettingsProps> = ({
             valueSuffix="px" 
           />
           <RangeInput id={`${selectedLayer.id}_imageBorderRadius`} label="Saroklekerekítés" min={0} max={Math.min(selectedLayer.width, selectedLayer.height) / 2} value={selectedLayer.borderRadius} onChange={val => onUpdateLayer(selectedLayer.id, { borderRadius: val })} valueSuffix="px" />
-
-          <div className="pt-4 mt-4 border-t border-gray-200">
-            <CheckboxInput id={`${selectedLayer.id}_imageShadowEnabled`} label="Árnyék" checked={selectedLayer.shadow.enabled} onChange={(val: boolean) => handleShadowChange('enabled', val)} />
-            {selectedLayer.shadow.enabled && (
-              <div className="space-y-4 mt-3 p-3 bg-slate-50 rounded-md border border-slate-200">
-                <ColorPickerInput id={`${selectedLayer.id}_imageShadowColor`} label="Árnyék színe" value={selectedLayer.shadow.color} onChange={(val: string) => handleShadowChange('color', val)} />
-                 <button onClick={() => onApplyBrandColorToLayer(selectedLayer.id, 'shadow', 'color1')} className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline mt-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 rounded px-0.5">Elsődleges márkaszín alkalmazása</button>
-                <RangeInput id={`${selectedLayer.id}_imageShadowOffsetX`} label="X eltolás" min={-20} max={20} value={selectedLayer.shadow.offsetX} onChange={(val: number) => handleShadowChange('offsetX', val)} valueSuffix="px" />
-                <RangeInput id={`${selectedLayer.id}_imageShadowOffsetY`} label="Y eltolás" min={-20} max={20} value={selectedLayer.shadow.offsetY} onChange={(val: number) => handleShadowChange('offsetY', val)} valueSuffix="px" />
-                <RangeInput id={`${selectedLayer.id}_imageShadowBlurRadius`} label="Elmosás" min={0} max={30} value={selectedLayer.shadow.blurRadius} onChange={(val: number) => handleShadowChange('blurRadius', val)} valueSuffix="px" />
-              </div>
-            )}
-          </div>
         </>
       )}
     </ControlPanelSection>
