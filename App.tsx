@@ -61,6 +61,8 @@ const App: React.FC = () => {
     const [gridDensity, setGridDensity] = useState(5);
     const [gridStyle, setGridStyle] = useState<'dotted' | 'solid'>('dotted');
     const [gridOpacity, setGridOpacity] = useState(0.5);
+    // Snap to grid state (globális)
+    const [snapToGrid, setSnapToGrid] = useState<'none' | 'vertical' | 'horizontal' | 'both'>('none');
 
     const mergeStateWithInitial = (loadedStatePartial: Partial<AppState>): AppState => {
         const defaultTextLayerFromConstants = INITIAL_STATE.layers.find(l => l.type === 'text') as TextLayer | undefined;
@@ -730,7 +732,9 @@ const App: React.FC = () => {
                             setGridStyle={setGridStyle}
                             gridOpacity={gridOpacity}
                             setGridOpacity={setGridOpacity}
-                            canAddImageLayer={!isMobile} // ÚJ: csak nem mobilon lehet képréteget hozzáadni
+                            canAddImageLayer={!isMobile}
+                            snapToGrid={snapToGrid}
+                            setSnapToGrid={setSnapToGrid}
                         />
                         
                         {selectedLayer && ( 
@@ -926,8 +930,9 @@ const App: React.FC = () => {
                     gridDensity={gridDensity}
                     gridStyle={gridStyle}
                     gridOpacity={gridOpacity}
-                    selectedLayer={selectedLayer}
+                    selectedLayer={selectedLayer || null}
                     onUpdateLayer={updateLayer}
+                    snapToGrid={snapToGrid}
                 />
                 <button
                     onClick={() => setIsPreviewVisible(!isPreviewVisible)}

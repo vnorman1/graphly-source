@@ -28,6 +28,8 @@ interface LayersPanelProps {
   gridOpacity: number;
   setGridOpacity: (v: number) => void;
   canAddImageLayer?: boolean; // ÚJ prop
+  snapToGrid: 'none' | 'vertical' | 'horizontal' | 'both';
+  setSnapToGrid: (v: 'none' | 'vertical' | 'horizontal' | 'both') => void;
 }
 
 const LayerTypeIcon: React.FC<{type: LayerType}> = ({type}) => {
@@ -55,7 +57,9 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
   setGridStyle,
   gridOpacity,
   setGridOpacity,
-  canAddImageLayer = true, // Default érték: true
+  canAddImageLayer = true,
+  snapToGrid,
+  setSnapToGrid
 }) => {
   const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -181,6 +185,21 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
                   { value: 'solid', name: 'Folytonos' }
                 ]}
                 onChange={val => setGridStyle(val as 'dotted' | 'solid')}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="snapToGrid" className="block text-sm font-medium text-gray-700">Snap to grid</label>
+              <SelectInput
+                id="snapToGrid"
+                label=""
+                value={snapToGrid}
+                options={[
+                  { value: 'none', name: 'Nincs' },
+                  { value: 'vertical', name: 'Csak vertikális' },
+                  { value: 'horizontal', name: 'Csak horizontális' },
+                  { value: 'both', name: 'Mindkettő' },
+                ]}
+                onChange={val => setSnapToGrid(val as any)}
               />
             </div>
             <RangeInput

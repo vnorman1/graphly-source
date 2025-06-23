@@ -12,6 +12,7 @@ interface PreviewCanvasProps {
   gridDensity?: number;
   gridStyle?: 'dotted' | 'solid';
   gridOpacity?: number;
+  snapToGrid?: 'none' | 'vertical' | 'horizontal' | 'both';
 }
 
 type DraggableElementInfo = {
@@ -62,6 +63,7 @@ const PreviewCanvas: React.FC<PreviewCanvasProps & {
   gridOpacity,
   selectedLayer,
   onUpdateLayer,
+  snapToGrid,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [draggingInfo, setDraggingInfo] = useState<DraggableElementInfo>(null);
@@ -626,8 +628,21 @@ const PreviewCanvas: React.FC<PreviewCanvasProps & {
     if (draggingInfo) {
         const deltaX = mousePos.x - draggingInfo.startX;
         const deltaY = mousePos.y - draggingInfo.startY;
-        const newX = draggingInfo.elementStartX + deltaX;
-        const newY = draggingInfo.elementStartY + deltaY;
+        let newX = draggingInfo.elementStartX + deltaX;
+        let newY = draggingInfo.elementStartY + deltaY;
+        // Snap to grid logic
+        if (snapToGrid && snapToGrid !== 'none' && gridDensity && gridDensity > 0) {
+          const canvasW = canvas.width;
+          const canvasH = canvas.height;
+          const spacingX = canvasW / gridDensity;
+          const spacingY = canvasH / gridDensity;
+          if (snapToGrid === 'vertical' || snapToGrid === 'both') {
+            newX = Math.round(newX / spacingX) * spacingX;
+          }
+          if (snapToGrid === 'horizontal' || snapToGrid === 'both') {
+            newY = Math.round(newY / spacingY) * spacingY;
+          }
+        }
         onLayerPositionChange(draggingInfo.layerId, { x: newX, y: newY });
     } else {
         let newHoveredId: string | null = null;
@@ -641,7 +656,7 @@ const PreviewCanvas: React.FC<PreviewCanvasProps & {
         }
         setHoveredLayerId(newHoveredId);
     }
-  }, [draggingInfo, appState.layers, appState.selectedLayerId, onLayerPositionChange, checkCollision, getCanvasAndContext]); 
+  }, [draggingInfo, appState.layers, appState.selectedLayerId, onLayerPositionChange, checkCollision, getCanvasAndContext, snapToGrid, gridDensity]); 
 
   const handleMouseUp = useCallback(() => {
     setDraggingInfo(null);
