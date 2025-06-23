@@ -306,90 +306,58 @@ const App: React.FC = () => {
 
         if (type === 'image' && file) {
             try {
-                // IndexedDB-be mentjük a blob-ot
-                if (isIndexedDBSupported) {
-                    await saveImage(layerId, file, file.name);
-                    
-                    // Előnézet generálása
-                    const reader = new FileReader();
-                    reader.onload = e => {
-                        if (e.target?.result) {
-                            const imgSrc = e.target.result as string;
-                            const img = document.createElement('img');
-                            img.onload = () => {
-                                const aspectRatio = img.width / img.height;
-                                const defaultWidth = 200;
-                                const defaultTextLayerForShadow = appState.layers.find(l => l.type === 'text') as TextLayer | undefined;
-                                const shadowState: TextShadowState = defaultTextLayerForShadow?.textShadow 
-                                    ? { ...defaultTextLayerForShadow.textShadow } 
-                                    : { enabled: false, color: '#000000', offsetX: 2, offsetY: 2, blurRadius: 4 };
-                                
-                                const imageLayerToAdd: ImageLayer = {
-                                    ...newLayerBaseProps,
-                                    id: layerId,
-                                    type: 'image',
-                                    name: `Kép ${appState.layers.filter(l => l.type === 'image').length + 1}`,
-                                    src: `indexeddb:${layerId}`, // Speciális jelölés IndexedDB-hez
-                                    width: defaultWidth,
-                                    height: defaultWidth / aspectRatio,
-                                    originalAspectRatio: aspectRatio,
-                                    borderRadius: 0,
-                                    shadow: shadowState,
-                                };
-                                setAppState((prevState: AppState): AppState => {
-                                    const newLayers: Layer[] = [...prevState.layers, imageLayerToAdd];
-                                    return { 
-                                        ...prevState, 
-                                        layers: newLayers, 
-                                        selectedLayerId: imageLayerToAdd.id 
-                                    };
-                                });
-                            }
-                            img.src = imgSrc;
-                        }
-                    };
-                    reader.readAsDataURL(file);
-                } else {
-                    // Fallback localStorage/DataURL megoldás
-                    const reader = new FileReader();
-                    reader.onload = e => {
-                        if (e.target?.result) {
-                            const imgSrc = e.target.result as string;
-                            const img = document.createElement('img');
-                            img.onload = () => {
-                                const aspectRatio = img.width / img.height;
-                                const defaultWidth = 200;
-                                const defaultTextLayerForShadow = appState.layers.find(l => l.type === 'text') as TextLayer | undefined;
-                                const shadowState: TextShadowState = defaultTextLayerForShadow?.textShadow 
-                                    ? { ...defaultTextLayerForShadow.textShadow } 
-                                    : { enabled: false, color: '#000000', offsetX: 2, offsetY: 2, blurRadius: 4 };
-                                
-                                const imageLayerToAdd: ImageLayer = {
-                                    ...newLayerBaseProps,
-                                    id: layerId,
-                                    type: 'image',
-                                    name: `Kép ${appState.layers.filter(l => l.type === 'image').length + 1}`,
-                                    src: imgSrc,
-                                    width: defaultWidth,
-                                    height: defaultWidth / aspectRatio,
-                                    originalAspectRatio: aspectRatio,
-                                    borderRadius: 0,
-                                    shadow: shadowState,
-                                };
-                                setAppState((prevState: AppState): AppState => {
-                                    const newLayers: Layer[] = [...prevState.layers, imageLayerToAdd];
-                                    return { 
-                                        ...prevState, 
-                                        layers: newLayers, 
-                                        selectedLayerId: imageLayerToAdd.id 
-                                    };
-                                });
-                            }
-                            img.src = imgSrc;
-                        }
-                    };
-                    reader.readAsDataURL(file);
+                // --- DUPLIKÁCIÓ ELLENŐRZÉS HASH ALAPJÁN ---
+                const arrayBuffer = await file.arrayBuffer();
+                const hashBuffer = await window.crypto.subtle.digest('SHA-256', arrayBuffer);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                const imageId = hashHex;
+                // Ellenőrizd, hogy van-e már ilyen kép a DB-ben
+                let blob = await getImage(imageId);
+                if (!blob) {
+                    // Ha nincs, mentsd el
+                    await saveImage(imageId, file, file.name);
+                    // Frissen mentett blobot is lekérjük, hogy biztosan blob legyen
+                    blob = await getImage(imageId);
                 }
+                // Mindig blob-ból hozzuk létre a layert (akár új, akár meglévő)
+                if (blob) {
+                    const imgSrc = URL.createObjectURL(blob);
+                    const img = document.createElement('img');
+                    img.onload = () => {
+                        const aspectRatio = img.width / img.height;
+                        const defaultWidth = 200;
+                        const defaultTextLayerForShadow = appState.layers.find(l => l.type === 'text') as TextLayer | undefined;
+                        const shadowState: TextShadowState = defaultTextLayerForShadow?.textShadow 
+                            ? { ...defaultTextLayerForShadow.textShadow } 
+                            : { enabled: false, color: '#000000', offsetX: 2, offsetY: 2, blurRadius: 4 };
+                        const imageLayerToAdd: ImageLayer = {
+                            ...newLayerBaseProps,
+                            id: layerId,
+                            type: 'image',
+                            name: file.name,
+                            src: `indexeddb:${imageId}`,
+                            width: defaultWidth,
+                            height: defaultWidth / aspectRatio,
+                            originalAspectRatio: aspectRatio,
+                            borderRadius: 0,
+                            shadow: shadowState,
+                        };
+                        setAppState((prevState: AppState): AppState => {
+                            const newLayers: Layer[] = [...prevState.layers, imageLayerToAdd];
+                            return { 
+                                ...prevState, 
+                                layers: newLayers, 
+                                selectedLayerId: imageLayerToAdd.id 
+                            };
+                        });
+                        setTimeout(() => URL.revokeObjectURL(imgSrc), 1000);
+                    };
+                    img.src = imgSrc;
+                } else {
+                    alert('Nem sikerült a képet betölteni.');
+                }
+                // --- /DUPLIKÁCIÓ ELLENŐRZÉS ---
             } catch (error) {
                 console.error('Hiba a kép mentésekor:', error);
                 alert('Hiba történt a kép mentésekor. Próbáld újra!');
@@ -830,7 +798,7 @@ const App: React.FC = () => {
             return { ...prev, layers: newLayers };
         });
     };
-
+    
     useEffect(() => {
         // Preloader: minimum 0.5s, de csak addig, amíg minden betölt
         const minTime = 1000;
