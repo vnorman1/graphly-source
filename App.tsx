@@ -9,6 +9,7 @@ import {
     EXPORT_FORMAT_OPTIONS
 } from './constants';
 import { OG_TEMPLATES } from './templates';
+import { useImageDB } from './hooks/useImageDB';
 
 
 import ControlPanelSection from './components/ControlPanelSection';
@@ -57,6 +58,7 @@ const App: React.FC = () => {
         }
     });
     const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [resolvedBgImageUrl, setResolvedBgImageUrl] = useState<string | null>(null);
     // Grid overlay state (globális, hogy PreviewCanvas is lássa)
     const [showGrid, setShowGrid] = useState(false);
     const [gridDensity, setGridDensity] = useState(5);
@@ -64,6 +66,25 @@ const App: React.FC = () => {
     const [gridOpacity, setGridOpacity] = useState(0.5);
     // Snap to grid state (globális)
     const [snapToGrid, setSnapToGrid] = useState<'none' | 'vertical' | 'horizontal' | 'both'>('none');
+
+    // IndexedDB hook képek kezeléséhez
+    const { saveImage, getImage, deleteImage, isSupported: isIndexedDBSupported, error: imageDBError } = useImageDB();
+
+    // Segédfüggvény IndexedDB képek betöltéséhez
+    const loadImageFromIndexedDB = useCallback(async (src: string): Promise<string | null> => {
+        if (!src.startsWith('indexeddb:')) return src;
+        
+        const imageId = src.replace('indexeddb:', '');
+        try {
+            const blob = await getImage(imageId);
+            if (blob) {
+                return URL.createObjectURL(blob);
+            }
+        } catch (error) {
+            console.error('Hiba a kép betöltésekor IndexedDB-ből:', error);
+        }
+        return null;
+    }, [getImage]);
 
     const mergeStateWithInitial = (loadedStatePartial: Partial<AppState>): AppState => {
         const defaultTextLayerFromConstants = INITIAL_STATE.layers.find(l => l.type === 'text') as TextLayer | undefined;
@@ -178,6 +199,30 @@ const App: React.FC = () => {
         localStorage.setItem('ogEditorState', JSON.stringify(appState));
     }, [appState]);
 
+    // Háttérkép URL feloldása IndexedDB-ból
+    useEffect(() => {
+        const resolveBgImage = async () => {
+            if (!appState.bgImage) {
+                setResolvedBgImageUrl(null);
+                return;
+            }
+            
+            if (appState.bgImage.startsWith('indexeddb:')) {
+                try {
+                    const resolvedUrl = await loadImageFromIndexedDB(appState.bgImage);
+                    setResolvedBgImageUrl(resolvedUrl);
+                } catch (error) {
+                    console.error('Hiba a háttérkép betöltésekor:', error);
+                    setResolvedBgImageUrl(null);
+                }
+            } else {
+                setResolvedBgImageUrl(appState.bgImage);
+            }
+        };
+        
+        resolveBgImage();
+    }, [appState.bgImage, loadImageFromIndexedDB]);
+
     const updateLayer = useCallback((layerId: string, updates: Partial<Layer>) => {
         setAppState(prev => {
             const newLayers = prev.layers.map(l => {
@@ -240,7 +285,7 @@ const App: React.FC = () => {
         updateLayer(layerId, { x: position.x, y: position.y });
     };
 
-    const addLayer = (type: LayerType, file?: File) => {
+    const addLayer = async (type: LayerType, file?: File) => {
         // Mobil nézetben ne lehessen képréteget hozzáadni
         if (type === 'image' && window.innerWidth < 640) {
             alert('Képréteg hozzáadása mobil nézetben nem engedélyezett!');
@@ -259,44 +304,95 @@ const App: React.FC = () => {
         const layerId = generateId(type);
 
         if (type === 'image' && file) {
-            const reader = new FileReader();
-            reader.onload = e => {
-                if (e.target?.result) {
-                    const imgSrc = e.target.result as string;
-                    const img = document.createElement('img');
-                    img.onload = () => {
-                        const aspectRatio = img.width / img.height;
-                        const defaultWidth = 200;
-                        const defaultTextLayerForShadow = appState.layers.find(l => l.type === 'text') as TextLayer | undefined;
-                        const shadowState: TextShadowState = defaultTextLayerForShadow?.textShadow 
-                            ? { ...defaultTextLayerForShadow.textShadow } 
-                            : { enabled: false, color: '#000000', offsetX: 2, offsetY: 2, blurRadius: 4 };
-                        
-                        const imageLayerToAdd: ImageLayer = {
-                            ...newLayerBaseProps,
-                            id: layerId,
-                            type: 'image',
-                            name: `Kép ${appState.layers.filter(l => l.type === 'image').length + 1}`,
-                            src: imgSrc,
-                            width: defaultWidth,
-                            height: defaultWidth / aspectRatio,
-                            originalAspectRatio: aspectRatio,
-                            borderRadius: 0,
-                            shadow: shadowState,
-                        };
-                        setAppState((prevState: AppState): AppState => {
-                            const newLayers: Layer[] = [...prevState.layers, imageLayerToAdd];
-                            return { 
-                                ...prevState, 
-                                layers: newLayers, 
-                                selectedLayerId: imageLayerToAdd.id 
-                            };
-                        });
-                    }
-                    img.src = imgSrc;
+            try {
+                // IndexedDB-be mentjük a blob-ot
+                if (isIndexedDBSupported) {
+                    await saveImage(layerId, file, file.name);
+                    
+                    // Előnézet generálása
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        if (e.target?.result) {
+                            const imgSrc = e.target.result as string;
+                            const img = document.createElement('img');
+                            img.onload = () => {
+                                const aspectRatio = img.width / img.height;
+                                const defaultWidth = 200;
+                                const defaultTextLayerForShadow = appState.layers.find(l => l.type === 'text') as TextLayer | undefined;
+                                const shadowState: TextShadowState = defaultTextLayerForShadow?.textShadow 
+                                    ? { ...defaultTextLayerForShadow.textShadow } 
+                                    : { enabled: false, color: '#000000', offsetX: 2, offsetY: 2, blurRadius: 4 };
+                                
+                                const imageLayerToAdd: ImageLayer = {
+                                    ...newLayerBaseProps,
+                                    id: layerId,
+                                    type: 'image',
+                                    name: `Kép ${appState.layers.filter(l => l.type === 'image').length + 1}`,
+                                    src: `indexeddb:${layerId}`, // Speciális jelölés IndexedDB-hez
+                                    width: defaultWidth,
+                                    height: defaultWidth / aspectRatio,
+                                    originalAspectRatio: aspectRatio,
+                                    borderRadius: 0,
+                                    shadow: shadowState,
+                                };
+                                setAppState((prevState: AppState): AppState => {
+                                    const newLayers: Layer[] = [...prevState.layers, imageLayerToAdd];
+                                    return { 
+                                        ...prevState, 
+                                        layers: newLayers, 
+                                        selectedLayerId: imageLayerToAdd.id 
+                                    };
+                                });
+                            }
+                            img.src = imgSrc;
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    // Fallback localStorage/DataURL megoldás
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        if (e.target?.result) {
+                            const imgSrc = e.target.result as string;
+                            const img = document.createElement('img');
+                            img.onload = () => {
+                                const aspectRatio = img.width / img.height;
+                                const defaultWidth = 200;
+                                const defaultTextLayerForShadow = appState.layers.find(l => l.type === 'text') as TextLayer | undefined;
+                                const shadowState: TextShadowState = defaultTextLayerForShadow?.textShadow 
+                                    ? { ...defaultTextLayerForShadow.textShadow } 
+                                    : { enabled: false, color: '#000000', offsetX: 2, offsetY: 2, blurRadius: 4 };
+                                
+                                const imageLayerToAdd: ImageLayer = {
+                                    ...newLayerBaseProps,
+                                    id: layerId,
+                                    type: 'image',
+                                    name: `Kép ${appState.layers.filter(l => l.type === 'image').length + 1}`,
+                                    src: imgSrc,
+                                    width: defaultWidth,
+                                    height: defaultWidth / aspectRatio,
+                                    originalAspectRatio: aspectRatio,
+                                    borderRadius: 0,
+                                    shadow: shadowState,
+                                };
+                                setAppState((prevState: AppState): AppState => {
+                                    const newLayers: Layer[] = [...prevState.layers, imageLayerToAdd];
+                                    return { 
+                                        ...prevState, 
+                                        layers: newLayers, 
+                                        selectedLayerId: imageLayerToAdd.id 
+                                    };
+                                });
+                            }
+                            img.src = imgSrc;
+                        }
+                    };
+                    reader.readAsDataURL(file);
                 }
-            };
-            reader.readAsDataURL(file);
+            } catch (error) {
+                console.error('Hiba a kép mentésekor:', error);
+                alert('Hiba történt a kép mentésekor. Próbáld újra!');
+            }
             return; 
         } else if (type === 'text') {
             const defaultTextLayerFromConstants = INITIAL_STATE.layers.find(l => l.type === 'text') as TextLayer | undefined;
@@ -337,12 +433,22 @@ const App: React.FC = () => {
         }
     };
     
-    const deleteLayer = (layerId: string) => {
+    const deleteLayer = async (layerId: string) => {
         const layerToDelete = appState.layers.find(l => l.id === layerId);
         
         if (layerToDelete?.type === 'logo') {
             alert("A logó réteg nem törölhető. Elrejtheted vagy törölheted a képét.");
             return;
+        }
+
+        // Ha kép réteg és IndexedDB-ben van tárolva, töröljük onnan is
+        if (layerToDelete?.type === 'image' && layerToDelete.src?.startsWith('indexeddb:')) {
+            try {
+                await deleteImage(layerId);
+            } catch (error) {
+                console.error('Hiba a kép törlésekor IndexedDB-ből:', error);
+                // Folytatjuk a réteg törlését akkor is, ha az IndexedDB törlés sikertelen
+            }
         }
 
         setAppState(prev => {
@@ -473,6 +579,22 @@ const App: React.FC = () => {
             ...prev,
             bgImageFilters: { ...prev.bgImageFilters, [key]: value }
         }));
+    };
+
+    const handleBackgroundImageDelete = async () => {
+        // Ha a háttérkép IndexedDB-ben van tárolva, töröljük onnan is
+        if (appState.bgImage?.startsWith('indexeddb:')) {
+            try {
+                const imageId = appState.bgImage.replace('indexeddb:', '');
+                await deleteImage(imageId);
+            } catch (error) {
+                console.error('Hiba a háttérkép törlésekor IndexedDB-ből:', error);
+                // Folytatjuk a törlést akkor is, ha az IndexedDB törlés sikertelen
+            }
+        }
+        
+        // Háttérkép törlése az állapotból
+        setAppState(prev => ({ ...prev, bgImage: null }));
     };
 
     const handleOverlayChange = <K extends keyof AppState['overlay']>(key: K, value: AppState['overlay'][K]) => {
@@ -786,15 +908,28 @@ const App: React.FC = () => {
                                     label="Háttérkép"
                                     buttonText="Vászon háttérkép feltöltése..." 
                                     accept="image/*" 
-                                    onChange={file => {
+                                    onChange={async (file) => {
                                         if (!file) return;
-                                        const reader = new FileReader();
-                                        reader.onload = e => {
-                                            if (e.target?.result && e.target.result !== appState.bgImage) {
-                                                handleStateChange('bgImage', e.target.result as string);
+                                        try {
+                                            if (isIndexedDBSupported) {
+                                                // IndexedDB-be mentjük a háttérképet
+                                                const bgImageId = `bg-${Date.now()}`;
+                                                await saveImage(bgImageId, file, file.name);
+                                                handleStateChange('bgImage', `indexeddb:${bgImageId}`);
+                                            } else {
+                                                // Fallback: DataURL
+                                                const reader = new FileReader();
+                                                reader.onload = e => {
+                                                    if (e.target?.result && e.target.result !== appState.bgImage) {
+                                                        handleStateChange('bgImage', e.target.result as string);
+                                                    }
+                                                };
+                                                reader.readAsDataURL(file);
                                             }
-                                        };
-                                        reader.readAsDataURL(file);
+                                        } catch (error) {
+                                            console.error('Hiba a háttérkép mentésekor:', error);
+                                            alert('Hiba történt a háttérkép mentésekor. Próbáld újra!');
+                                        }
                                     }}
                                     disabled={appState.backgroundType !== 'image'}
                                     className="mt-4"
@@ -803,14 +938,16 @@ const App: React.FC = () => {
                             {/* Ha van háttérkép, csak a filterek és törlés gomb jelenjen meg, de csak NEM mobil nézetben */}
                             {appState.backgroundType === 'image' && appState.bgImage && !isMobile && (
                                 <div className="space-y-4 mt-4 p-4 bg-gray-100/50 rounded-lg border border-gray-200">
-                                    <img src={appState.bgImage} alt="Háttérkép előnézet" className="w-full rounded mb-2 border border-gray-300" style={{maxHeight: 180, objectFit: 'contain'}} />
+                                    {resolvedBgImageUrl && (
+                                        <img src={resolvedBgImageUrl} alt="Háttérkép előnézet" className="w-full rounded mb-2 border border-gray-300" style={{maxHeight: 180, objectFit: 'contain'}} />
+                                    )}
                                     <InputLabel text="Képfilterek (vászon háttér)" />
                                     <RangeInput id="bgBlur" label="Elmosás (Blur)" min={0} max={20} value={appState.bgImageFilters.blur} onChange={val => handleImageFilterChange('blur', val)} valueSuffix="px" />
                                     <RangeInput id="bgBrightness" label="Fényerő" min={0} max={200} step={5} value={appState.bgImageFilters.brightness} onChange={val => handleImageFilterChange('brightness', val)} valueSuffix="%" />
                                     <RangeInput id="bgContrast" label="Kontraszt" min={0} max={200} step={5} value={appState.bgImageFilters.contrast} onChange={val => handleImageFilterChange('contrast', val)} valueSuffix="%" />
                                      <div className='font-italic text-sm text-gray-500'>A szűrők telefonra nem optimalizáltak!</div>
                                     <button 
-                                        onClick={() => handleStateChange('bgImage', null)} 
+                                        onClick={handleBackgroundImageDelete} 
                                         className="w-full text-sm font-semibold text-red-600 hover:text-red-800 py-2 rounded-md border border-red-300 hover:bg-red-50 transition-colors mt-2"
                                     >
                                     Háttérkép törlése
@@ -943,6 +1080,8 @@ const App: React.FC = () => {
                     selectedLayer={selectedLayer || null}
                     onUpdateLayer={updateLayer}
                     snapToGrid={snapToGrid}
+                    loadImageFromIndexedDB={loadImageFromIndexedDB}
+                    resolvedBgImageUrl={resolvedBgImageUrl}
                 />
                 <button
                     onClick={() => setIsPreviewVisible(!isPreviewVisible)}

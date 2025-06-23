@@ -13,6 +13,9 @@ interface PreviewCanvasProps {
   gridStyle?: 'dotted' | 'solid';
   gridOpacity?: number;
   snapToGrid?: 'none' | 'vertical' | 'horizontal' | 'both';
+  // IndexedDB támogatás
+  loadImageFromIndexedDB?: (src: string) => Promise<string | null>;
+  resolvedBgImageUrl?: string | null;
 }
 
 type DraggableElementInfo = {
@@ -64,6 +67,8 @@ const PreviewCanvas: React.FC<PreviewCanvasProps & {
   selectedLayer,
   onUpdateLayer,
   snapToGrid,
+  loadImageFromIndexedDB,
+  resolvedBgImageUrl,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [draggingInfo, setDraggingInfo] = useState<DraggableElementInfo>(null);
@@ -97,15 +102,22 @@ const PreviewCanvas: React.FC<PreviewCanvasProps & {
         neededSrcs.add(layer.src);
       }
     });
-    if (appState.bgImage) {
-      neededSrcs.add(appState.bgImage);
+    if (resolvedBgImageUrl) {
+      neededSrcs.add(resolvedBgImageUrl);
     }
 
     // Csak azokat töltsük be, amik nincsenek a Map-ben
     neededSrcs.forEach(src => {
       if (!newImageMap.has(src)) {
+        const loadPromise = src.startsWith('indexeddb:') && loadImageFromIndexedDB
+          ? loadImageFromIndexedDB(src).then(resolvedSrc => {
+              if (!resolvedSrc) throw new Error('Failed to resolve IndexedDB image');
+              return loadImage(resolvedSrc);
+            })
+          : loadImage(src);
+
         promises.push(
-          loadImage(src)
+          loadPromise
             .then(img => {
               if (!isMounted) return;
               newImageMap.set(src, img);
@@ -137,18 +149,18 @@ const PreviewCanvas: React.FC<PreviewCanvasProps & {
         setLoadedImages(new Map(newImageMap));
     }
     return () => { isMounted = false; };
-  }, [appState.layers, appState.bgImage]); // bgImage is dependency!
+  }, [appState.layers, resolvedBgImageUrl, loadImageFromIndexedDB]); // add loadImageFromIndexedDB dependency
 
   // Háttérkép betöltése csak akkor, ha tényleg új src jött be
   useEffect(() => {
-    if (appState.bgImage && appState.backgroundType === 'image' && !loadedImages.has(appState.bgImage)) {
+    if (resolvedBgImageUrl && appState.backgroundType === 'image' && !loadedImages.has(resolvedBgImageUrl)) {
         setIsBgImageLoading(true);
-        loadImage(appState.bgImage)
+        loadImage(resolvedBgImageUrl)
             .then(img => {
                 setLoadedImages(prev => {
-                  if (prev.has(appState.bgImage!)) return prev;
+                  if (prev.has(resolvedBgImageUrl!)) return prev;
                   const newMap = new Map(prev);
-                  newMap.set(appState.bgImage!, img);
+                  newMap.set(resolvedBgImageUrl!, img);
                   return newMap;
                 });
                 setIsBgImageLoading(false);
@@ -160,7 +172,7 @@ const PreviewCanvas: React.FC<PreviewCanvasProps & {
     } else {
         setIsBgImageLoading(false);
     }
-  }, [appState.bgImage, appState.backgroundType]); // loadedImages NEM kell ide!
+  }, [resolvedBgImageUrl, appState.backgroundType]); // loadedImages NEM kell ide!
 
 
   const getCanvasAndContext = useCallback(() => {
@@ -423,7 +435,7 @@ const PreviewCanvas: React.FC<PreviewCanvasProps & {
     ctx.shadowColor = 'transparent'; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; ctx.shadowBlur = 0;
     ctx.letterSpacing = '0px'; ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     // --- FŐ JAVÍTÁS: ha háttérkép töltődik, CSAK a töltő szöveget rajzoljuk ki, mást nem! ---
-    if (appState.backgroundType === 'image' && isBgImageLoading && appState.bgImage) {
+    if (appState.backgroundType === 'image' && isBgImageLoading && resolvedBgImageUrl) {
         ctx.fillStyle = appState.bgColor; ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = "rgba(0,0,0,0.5)"; ctx.font = "20px Inter"; ctx.textAlign = "center";
         ctx.fillText("Háttérkép betöltése...", canvas.width/2, canvas.height/2);
@@ -451,7 +463,7 @@ const PreviewCanvas: React.FC<PreviewCanvasProps & {
         gradientFill.addColorStop(0, color1); gradientFill.addColorStop(1, color2);
         ctx.fillStyle = gradientFill; ctx.fillRect(0, 0, canvas.width, canvas.height);
     } 
-    const bgImageFromState = appState.bgImage; 
+    const bgImageFromState = resolvedBgImageUrl; 
     const bgImageElement = bgImageFromState ? loadedImages.get(bgImageFromState) : null;
     if (appState.backgroundType === 'image') {
         if (bgImageElement) {
