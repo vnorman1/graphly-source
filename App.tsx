@@ -1104,7 +1104,7 @@ const App: React.FC = () => {
                         <ControlPanelSection title="Képek">
                             <div>
                                 <p className="text-sm text-gray-600 mb-4">
-                                    Kezeld a tárolt képeket. Kattints egy képre vagy húzd a canvas-ra a használathoz.
+                                    Kezeld a lokálisan tárolt képeket.
                                 </p>
                                 <PicsSettings onAddImageLayer={handleAddStoredImageLayer} />
                             </div>

@@ -133,7 +133,7 @@ const PicsSettings: React.FC<PicsSettingsProps> = ({ onAddImageLayer }) => {
         <h4 className="font-semibold text-gray-900">Tárolt Képek</h4>        <div className="flex items-center gap-2">
           <button
             onClick={loadImages}
-            className="text-xs text-[#FF3B30] hover:text-red-700 font-medium"
+            className="text-lg text-gray-600 transition transition-duration-200 hover:text-[#FF3B30] font-medium"
             title="Frissítés"
           >
             ↻
@@ -202,16 +202,12 @@ const PicsSettings: React.FC<PicsSettingsProps> = ({ onAddImageLayer }) => {
                   {/* Törlés gomb - csak hover-on jelenik meg */}
                   <button
                     onClick={(e) => handleDeleteImage(image.id, e)}
-                    className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-md text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
                     title="Törlés"
                   >
                     ×
                   </button>                  {/* Drag hint */}
-                  <div className="absolute inset-0 bg-[#FF3B30] bg-opacity-20 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <span className="text-xs font-medium text-[#FF3B30] bg-white px-2 py-1 rounded">
-                      Húzd ide ↗
-                    </span>
-                  </div>
+                  
                 </div>
               ))}
             </div>
@@ -250,7 +246,7 @@ const PicsSettings: React.FC<PicsSettingsProps> = ({ onAddImageLayer }) => {
       )}
 
       <div className="text-xs text-gray-500">
-        💡 Kattints egy képre vagy húzd a canvas-ra a használathoz
+        💡 Kattints egy képre hogy a canvas-hoz add.
       </div>
     </div>
   );
