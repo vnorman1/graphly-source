@@ -121,132 +121,154 @@ const PicsSettings: React.FC<PicsSettingsProps> = ({ onAddImageLayer }) => {
 
   if (!isSupported) {
     return (
-      <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded text-yellow-800 text-sm">
+      <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded-lg  text-yellow-800 text-sm">
         IndexedDB nem támogatott ebben a böngészőben.
       </div>
     );
   }
 
   return (
-    <div className="mt-4 p-4 bg-gray-100/50 rounded-lg border border-gray-200 space-y-4">
-      <div className="flex items-center justify-between">
-        <h4 className="font-semibold text-gray-900">Tárolt Képek</h4>        <div className="flex items-center gap-2">
+    <div className="mt-4 bg-[#F8F9FB] rounded-xl border border-gray-200 ">
+      <div className="px-6 pt-5 pb-2 border-b border-gray-200 flex items-center justify-between">
+        <h3 className="font-bold text-xl text-gray-900">Képtár</h3>
+        <div className="flex items-center gap-2">
           <button
             onClick={loadImages}
-            className="text-lg text-gray-600 transition transition-duration-200 hover:text-[#FF3B30] font-medium"
+            className="px-2 h-6  border-gray-300 rounded-md bg-white hover:text-[#FF3B30] text-gray-500 font-semibold text-xs text-base hover:border-[#FF3B30] hover:bg-[#FF3B30]/10 transition-colors duration-150 focus:outline-none"
             title="Frissítés"
+            type="button"
+            aria-label="Frissítés"
           >
-            ↻
+            Frissítés
           </button>
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-xs text-gray-600 hover:text-gray-800 font-medium"
+            className="group p-0 m-0 bg-transparent border-none outline-none focus:outline-none"
+            title={isExpanded ? 'Bezár' : 'Kibont'}
+            type="button"
+            aria-label={isExpanded ? 'Bezár' : 'Kibont'}
           >
-            {isExpanded ? '▼' : '▶'}
+            <svg
+              className={`w-6 h-6 text-gray-700 transition-transform duration-200 ${isExpanded ? 'rotate-45' : ''} group-hover:text-[#FF3B30]`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              viewBox="0 0 24 24"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" strokeLinecap="round" />
+              <line x1="5" y1="12" x2="19" y2="12" strokeLinecap="round" />
+            </svg>
           </button>
         </div>
-      </div>      {loading ? (
-        <div className="text-center py-4">
-          <p className="text-sm text-gray-500">Betöltés...</p>
-        </div>
-      ) : images.length === 0 ? (
-        <div className="text-center py-4">
-          <p className="text-sm text-gray-500">Nincsenek tárolt képek.</p>
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center justify-between text-xs text-gray-600">
-            <span>
-              {images.length} kép ({formatFileSize(images.reduce((sum, img) => sum + img.size, 0))})
-            </span>
-            <button
-              onClick={handleClearAll}
-              className="text-xs text-red-600 hover:text-red-700 font-medium underline"
-              title="Összes kép törlése"
-            >
-              Összes törlés
-            </button>
+      </div>
+      <div className="px-6 pt-4 pb-2">
+        {loading ? (
+          <div className="text-center py-6">
+            <div className="w-8 h-8 mx-auto border-2 border-[#FF3B30]/30 border-t-[#FF3B30] rounded-full animate-spin mb-2"></div>
+            <p className="text-sm text-gray-500">Betöltés...</p>
           </div>
-          
-          {isExpanded && (
-            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-              {images.map(image => (                <div
-                  key={image.id}
-                  className="relative border border-gray-200 rounded-md p-2 hover:border-[#FF3B30] transition-colors cursor-pointer group"
-                  onClick={() => handleImageClick(image)}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, image)}
-                  title={`Kattints vagy húzd a canvas-ra: ${image.filename}`}
-                >
-                  {/* Kép előnézet */}
-                  <div className="aspect-video bg-gray-100 rounded-sm mb-2 overflow-hidden">
-                    {imageUrls.get(image.id) && (
+        ) : images.length === 0 ? (
+          <div className="text-center py-6">
+            <p className="text-sm text-gray-400">Nincsenek tárolt képek.</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+              <span className="font-medium">
+                {images.length} kép <span className="text-gray-300">|</span> {formatFileSize(images.reduce((sum, img) => sum + img.size, 0))}
+              </span>
+              <button
+                onClick={handleClearAll}
+                className="px-2 h-6  border-gray-300 rounded-md bg-white hover:text-[#FF3B30] text-gray-500 font-semibold text-xs text-base hover:border-[#FF3B30] hover:bg-[#FF3B30]/10 transition-colors duration-150 focus:outline-none"
+                title="Összes kép törlése"
+                type="button"
+              >
+                Összes törlés
+              </button>
+            </div>
+            {isExpanded && (
+              <div className="grid grid-cols-2 gap-3 max-h-56 overflow-y-auto">
+                {images.map(image => (
+                  <div
+                    key={image.id}
+                    className="relative border border-gray-200 rounded-md p-2 bg-white  hover:border-[#FF3B30] transition-colors cursor-pointer group flex flex-col"
+                    onClick={() => handleImageClick(image)}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, image)}
+                    title={`Kattints vagy húzd a canvas-ra: ${image.filename}`}
+                  >
+                    {/* Kép előnézet */}
+                    <div className="aspect-video bg-gray-50 rounded-md mb-2 overflow-hidden border border-gray-200 flex items-center justify-center">
+                      {imageUrls.get(image.id) ? (
+                        <img
+                          src={imageUrls.get(image.id)}
+                          alt={image.filename}
+                          className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-200"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-300">?</div>
+                      )}
+                    </div>
+                    {/* Kép információk */}
+                    <div className="text-xs text-gray-700 flex-1">
+                      <p className="truncate font-semibold" title={image.filename}>
+                        {image.filename}
+                      </p>
+                      <p className="text-gray-400">
+                        {formatFileSize(image.size)}
+                      </p>
+                    </div>
+                    {/* Törlés gomb */}
+                    <button
+                      onClick={(e) => handleDeleteImage(image.id, e)}
+                      className="absolute top-2 right-2 w-6 h-6 border border-[#FF3B30] bg-white text-[#FF3B30] rounded-md text-base font-bold  hover:bg-[#FF3B30] hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#FF3B30]"
+                      title="Törlés"
+                      type="button"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!isExpanded && images.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {images.slice(0, 4).map(image => (
+                  <div
+                    key={image.id}
+                    className="w-14 h-14 bg-gray-50 rounded-md border border-gray-200  overflow-hidden cursor-pointer hover:border-[#FF3B30] transition-colors flex items-center justify-center"
+                    onClick={() => handleImageClick(image)}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, image)}
+                    title={image.filename}
+                  >
+                    {imageUrls.get(image.id) ? (
                       <img
                         src={imageUrls.get(image.id)}
                         alt={image.filename}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform hover:scale-105 duration-200"
                       />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-300">?</div>
                     )}
                   </div>
-
-                  {/* Kép információk */}
-                  <div className="text-xs text-gray-700">
-                    <p className="truncate font-medium" title={image.filename}>
-                      {image.filename}
-                    </p>
-                    <p className="text-gray-500">
-                      {formatFileSize(image.size)}
-                    </p>
-                  </div>
-
-                  {/* Törlés gomb - csak hover-on jelenik meg */}
-                  <button
-                    onClick={(e) => handleDeleteImage(image.id, e)}
-                    className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-md text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                    title="Törlés"
+                ))}
+                {images.length > 4 && (
+                  <div 
+                    className="w-14 h-14 bg-gray-100 rounded-md border border-gray-200 flex items-center justify-center text-xs font-semibold text-gray-500 cursor-pointer  hover:bg-gray-200 transition-colors"
+                    onClick={() => setIsExpanded(true)}
+                    title="További képek megjelenítése"
                   >
-                    ×
-                  </button>                  {/* Drag hint */}
-                  
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!isExpanded && images.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {images.slice(0, 4).map(image => (                <div
-                  key={image.id}
-                  className="w-12 h-12 bg-gray-100 rounded border border-gray-200 overflow-hidden cursor-pointer hover:border-[#FF3B30] transition-colors"
-                  onClick={() => handleImageClick(image)}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, image)}
-                  title={image.filename}
-                >
-                  {imageUrls.get(image.id) && (
-                    <img
-                      src={imageUrls.get(image.id)}
-                      alt={image.filename}
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-              ))}
-              {images.length > 4 && (
-                <div 
-                  className="w-12 h-12 bg-gray-200 rounded border border-gray-300 flex items-center justify-center text-xs font-medium text-gray-600 cursor-pointer"
-                  onClick={() => setIsExpanded(true)}
-                >
-                  +{images.length - 4}
-                </div>
-              )}
-            </div>
-          )}
-        </>
-      )}
-
-      <div className="text-xs text-gray-500">
-        💡 Kattints egy képre hogy a canvas-hoz add.
+                    +{images.length - 4}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+        <div className="text-xs text-gray-400 pt-3 flex items-center gap-1">
+          <span role="img" aria-label="info">💡</span> Kattints vagy húzd a képet a canvas-hoz.
+        </div>
       </div>
     </div>
   );
