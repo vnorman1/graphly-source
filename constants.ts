@@ -97,6 +97,10 @@ export const FONT_OPTIONS: SelectOption[] = [
     { name: 'Roboto', value: 'Roboto' },
     { name: 'Open Sans', value: 'Open Sans' },
     { name: 'Lato', value: 'Lato' },
+    { name: 'Poppins', value: 'Poppins' },
+    { name: 'Nunito', value: 'Nunito' },
+    { name: 'Oswald', value: 'Oswald' },
+    { name: 'Raleway', value: 'Raleway' },
 ];
 
 export const FONT_WEIGHT_OPTIONS: SelectOption[] = [
