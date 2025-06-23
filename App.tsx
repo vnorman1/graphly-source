@@ -1072,6 +1072,7 @@ const App: React.FC = () => {
                     appState={appState} 
                     onCanvasUpdate={handleCanvasUpdate}
                     onLayerPositionChange={handleLayerPositionChange}
+                    onLayerSelect={selectLayer}
                     // Grid overlay props
                     showGrid={!isPreviewVisible && showGrid}
                     gridDensity={gridDensity}

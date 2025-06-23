@@ -7,6 +7,7 @@ interface PreviewCanvasProps {
   appState: AppState;
   onCanvasUpdate: (dataUrl: string) => void;
   onLayerPositionChange: (layerId: string, position: { x: number; y: number }) => void;
+  onLayerSelect?: (layerId: string) => void; // ÚJ: réteg kiválasztás
   // ÚJ: Grid overlay propok
   showGrid?: boolean;
   gridDensity?: number;
@@ -60,6 +61,7 @@ const PreviewCanvas: React.FC<PreviewCanvasProps & {
   appState, 
   onCanvasUpdate,
   onLayerPositionChange,
+  onLayerSelect,
   showGrid,
   gridDensity,
   gridStyle,
@@ -604,20 +606,30 @@ const PreviewCanvas: React.FC<PreviewCanvasProps & {
 
     const sortedLayers = [...appState.layers].sort((a, b) => b.zIndex - a.zIndex);
 
+    // Első lépés: ellenőrizzük, van-e réteg a kattintás helyén
     for (const layer of sortedLayers) {
         if (!layer.isVisible) continue;
-        // Only allow dragging selected layer
-        if (layer.id === appState.selectedLayerId && checkCollision(mousePos.x, mousePos.y, layer, ctx)) {
-           setDraggingInfo({
-                layerId: layer.id,
-                startX: mousePos.x,
-                startY: mousePos.y,
-                elementStartX: layer.x, // Store the layer's logical X/Y
-                elementStartY: layer.y,
-            });
-            return; 
+        if (checkCollision(mousePos.x, mousePos.y, layer, ctx)) {
+            // Ha más rétegre kattintottunk, válasszuk ki azt
+            if (layer.id !== appState.selectedLayerId && onLayerSelect) {
+                onLayerSelect(layer.id);
+                return; // Várjuk meg a kiválasztást, ne indítsunk drag-et
+            }
+            // Ha már a kiválasztott rétegre kattintottunk, indítsunk drag-et
+            if (layer.id === appState.selectedLayerId) {
+                setDraggingInfo({
+                    layerId: layer.id,
+                    startX: mousePos.x,
+                    startY: mousePos.y,
+                    elementStartX: layer.x, // Store the layer's logical X/Y
+                    elementStartY: layer.y,
+                });
+                return;
+            }
         }
     }
+    
+    // Ha nem találtunk réteget a kattintás helyén, töröljük a kiválasztást
     setDraggingInfo(null);
   };
 
