@@ -238,6 +238,11 @@ const App: React.FC = () => {
     };
 
     const addLayer = (type: LayerType, file?: File) => {
+        // Mobil nézetben ne lehessen képréteget hozzáadni
+        if (type === 'image' && window.innerWidth < 640) {
+            alert('Képréteg hozzáadása mobil nézetben nem engedélyezett!');
+            return;
+        }
         const newLayerBaseProps: Omit<LayerBase, 'type' | 'name' | 'id'> = { 
             zIndex: appState.layers.length > 0 ? Math.max(...appState.layers.map(l => l.zIndex)) + 1 : 0,
             isVisible: true,
@@ -658,6 +663,9 @@ const App: React.FC = () => {
         return () => clearTimeout(timeoutId);
     }, []);
 
+    // --- HÁTTÉRKÉP MOBIL TILTÁS ---
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+
     if (isLoading) {
         return <Preloader />;
     }
@@ -722,6 +730,7 @@ const App: React.FC = () => {
                             setGridStyle={setGridStyle}
                             gridOpacity={gridOpacity}
                             setGridOpacity={setGridOpacity}
+                            canAddImageLayer={!isMobile} // ÚJ: csak nem mobilon lehet képréteget hozzáadni
                         />
                         
                         {selectedLayer && ( 
@@ -765,9 +774,8 @@ const App: React.FC = () => {
                                     )}
                                 </div>
                             )}
-                            
-                            {/* Háttérkép feltöltő CSAK ha nincs háttérkép */}
-                            {appState.backgroundType === 'image' && !appState.bgImage && (
+                            {/* Háttérkép feltöltő CSAK ha nincs háttérkép és NEM mobil nézet */}
+                            {appState.backgroundType === 'image' && !appState.bgImage && !isMobile && (
                                 <FileUploadInput 
                                     id="bgImageUpload" 
                                     label="Háttérkép"
@@ -787,8 +795,8 @@ const App: React.FC = () => {
                                     className="mt-4"
                                 />
                             )}
-                            {/* Ha van háttérkép, csak a filterek és törlés gomb jelenjen meg */}
-                            {appState.backgroundType === 'image' && appState.bgImage && (
+                            {/* Ha van háttérkép, csak a filterek és törlés gomb jelenjen meg, de csak NEM mobil nézetben */}
+                            {appState.backgroundType === 'image' && appState.bgImage && !isMobile && (
                                 <div className="space-y-4 mt-4 p-4 bg-gray-100/50 rounded-lg border border-gray-200">
                                     <img src={appState.bgImage} alt="Háttérkép előnézet" className="w-full rounded mb-2 border border-gray-300" style={{maxHeight: 180, objectFit: 'contain'}} />
                                     <InputLabel text="Képfilterek (vászon háttér)" />
@@ -804,7 +812,12 @@ const App: React.FC = () => {
                                     </button>
                                 </div>
                             )}
-                            
+                            {/* Mobil nézetben háttérkép nem engedélyezett figyelmeztetés */}
+                            {appState.backgroundType === 'image' && isMobile && (
+                                <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded text-yellow-800 text-sm text-center">
+                                    Képháttér beállításához kérlek, használd a desktop verziót! Mobil nézetben csak egyszínű vagy színátmenetes háttér engedélyezett.
+                                </div>
+                            )}
                             {showOverlayControls && (
                                  <div className="mt-4 p-4 bg-gray-100/50 rounded-lg border border-gray-200 space-y-4">
                                    <InputLabel text="Szín-overlay (vászon háttér)" />

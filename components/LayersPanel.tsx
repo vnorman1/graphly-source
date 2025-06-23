@@ -27,6 +27,7 @@ interface LayersPanelProps {
   setGridStyle: (v: 'dotted' | 'solid') => void;
   gridOpacity: number;
   setGridOpacity: (v: number) => void;
+  canAddImageLayer?: boolean; // ÚJ prop
 }
 
 const LayerTypeIcon: React.FC<{type: LayerType}> = ({type}) => {
@@ -54,6 +55,7 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
   setGridStyle,
   gridOpacity,
   setGridOpacity,
+  canAddImageLayer = true, // Default érték: true
 }) => {
   const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -251,13 +253,15 @@ const LayersPanel: React.FC<LayersPanelProps> = ({
         ))}
       </div>
       <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
-        <FileUploadInput
-            id="addImageLayer"
-            buttonText="Új kép réteg hozzáadása"
-            accept="image/*"
-            onChange={handleImageFileChange}
-            className="w-full"
-        />
+        {canAddImageLayer !== false && (
+          <FileUploadInput
+              id="addImageLayer"
+              buttonText="Új kép réteg hozzáadása"
+              accept="image/*"
+              onChange={handleImageFileChange}
+              className="w-full"
+          />
+        )}
         <button 
             onClick={handleAddTextLayer}
             className="w-full flex items-center justify-center px-4 py-2.5 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF3B30] transition-colors"
