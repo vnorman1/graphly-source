@@ -9,7 +9,7 @@
   "display": "standalone",
   "orientation": "any",
   "background_color": "#f2f2f2",
-  "theme_color": "#FF3B30",
+  "theme_color": "#e5e7eb",
   "categories": ["graphics", "editor", "productivity", "tools"],
   "icons": [
     {
